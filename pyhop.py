@@ -164,6 +164,7 @@ class Agent:
         self.state = None
         self.goal = None
         self.tasks = []
+        self.plan = []
 
 agents = {}  # type: Dict[str, Agent]
 
@@ -236,7 +237,11 @@ def print_methods(agent=None):
 # The actual planner
 
 def multi_agent_planning(verbose=0):
-    pass
+    plans = {}
+    for ag in agents.keys():
+        plans[ag] = pyhop(ag)
+    return plans
+
 
 def pyhop(agent,verbose=0):
     """
@@ -247,11 +252,11 @@ def pyhop(agent,verbose=0):
         print("Agent is not declared!")
         return
     if verbose>0: print('** pyhop, verbose={}: **\n  agent={}\n   state = {}\n   tasks = {}'.format(verbose, agent, agents[agent].state.__name__, agents[agent].tasks))
-    result = seek_plan(agents, agent, [],0,  verbose)
+    result = seek_plan(agents, agent, 0, verbose)
     if verbose>0: print('** result =',result,'\n')
     return result
 
-def seek_plan(agents, agent_name, plan,depth, verbose=0):
+def seek_plan(agents, agent_name, depth, verbose=0):
     """
     Workhorse for pyhop. state and tasks are as in pyhop.
     - plan is the current partial plan.
@@ -260,8 +265,8 @@ def seek_plan(agents, agent_name, plan,depth, verbose=0):
     """
     if verbose>1: print('depth {} tasks {}'.format(depth,agents[agent_name].tasks))
     if agents[agent_name].tasks == []:
-        if verbose>2: print('depth {} returns plan {}'.format(depth,plan))
-        return plan
+        if verbose>2: print('depth {} returns plan {}'.format(depth, agents[agent_name].plan))
+        return agents[agent_name].plan
     task1 = agents[agent_name].tasks[0]
     if task1[0] in agents[agent_name].operators:
         if verbose>2: print('depth {} action {}'.format(depth,task1))
@@ -276,7 +281,8 @@ def seek_plan(agents, agent_name, plan,depth, verbose=0):
                 print("False")
         if newagents:
             newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
-            solution = seek_plan(newagents, agent_name, plan+[task1], depth+1, verbose)
+            newagents[agent_name].plan = newagents[agent_name].plan + [task1]
+            solution = seek_plan(newagents, agent_name, depth+1, verbose)
             if solution != False:
                 return solution
     if task1[0] in agents[agent_name].methods:
@@ -289,7 +295,7 @@ def seek_plan(agents, agent_name, plan,depth, verbose=0):
                 print('depth {} new tasks: {}'.format(depth,subtasks))
             if subtasks != False:
                 agents[agent_name].tasks = subtasks + agents[agent_name].tasks[1:]
-                solution = seek_plan(agents, agent_name, plan,depth+1, verbose)
+                solution = seek_plan(agents, agent_name, depth+1, verbose)
                 if solution != False:
                     return solution
     if verbose>2: print('depth {} returns failure'.format(depth))

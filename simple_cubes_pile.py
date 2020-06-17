@@ -133,9 +133,8 @@ pyhop.add_tasks("robot", [('stack', goal1_r)])
 
 pyhop.print_state(pyhop.agents["human"].state)
 
-plan_h = pyhop.pyhop("human", verbose=0)
-plan_r = pyhop.pyhop("robot", verbose=0)
-print("Human plan:", plan_h)
-print("Robot plan:", plan_r)
+plans = pyhop.multi_agent_planning(verbose=0)
+
+print(plans)
 
 

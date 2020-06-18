@@ -237,22 +237,42 @@ def print_methods(agent=None):
 # The actual planner
 
 def multi_agent_planning(verbose=0):
-    plans = {}
-    for ag in agents.keys():
-        plans[ag] = pyhop(ag)
-    return plans
+    ag = plan_step(agents, list(agents.keys()), verbose)
+    return {a.name: a.plan for a in ag.values()} if ag != False else False
+
+def plan_step(agents, agents_order, verbose=0):
+    if all(a.tasks == [] for a in agents.values()):
+        print("A multi agent solution has been found")
+        return agents
+
+    ag_i = next(i for i in range(len(agents_order)) if agents[agents_order[i]].tasks != [])
+    name = agents[agents_order[ag_i]].name
+    new_agents_order = agents_order[:]
+    new_agents_order.append(new_agents_order.pop(ag_i))
+    newagents = pyhop(agents, name, verbose)
+    if newagents != False:
+        print("new order:", agents_order)
+        return plan_step(copy.deepcopy(newagents), new_agents_order, verbose)
+    else:
+        if new_agents_order != agents_order:
+            print("new order:", agents_order)
+            return plan_step(copy.deepcopy(agents), new_agents_order, verbose)
+        else:
+            return False
 
 
-def pyhop(agent,verbose=0):
+
+
+def pyhop(agents, agent_name ,verbose=0):
     """
     Try to find a plan that accomplishes tasks in state. 
     If successful, return the plan. Otherwise return False.
     """
-    if agent not in agents:
+    if agent_name not in agents:
         print("Agent is not declared!")
         return
-    if verbose>0: print('** pyhop, verbose={}: **\n  agent={}\n   state = {}\n   tasks = {}'.format(verbose, agent, agents[agent].state.__name__, agents[agent].tasks))
-    result = seek_plan(agents, agent, 0, verbose)
+    if verbose>0: print('** pyhop, verbose={}: **\n  agent={}\n   state = {}\n   tasks = {}'.format(verbose, agent_name, agents[agent_name].state.__name__, agents[agent_name].tasks))
+    result = seek_plan(agents, agent_name, 0, verbose)
     if verbose>0: print('** result =',result,'\n')
     return result
 
@@ -266,7 +286,7 @@ def seek_plan(agents, agent_name, depth, verbose=0):
     if verbose>1: print('depth {} tasks {}'.format(depth,agents[agent_name].tasks))
     if agents[agent_name].tasks == []:
         if verbose>2: print('depth {} returns plan {}'.format(depth, agents[agent_name].plan))
-        return agents[agent_name].plan
+        return agents
     task1 = agents[agent_name].tasks[0]
     if task1[0] in agents[agent_name].operators:
         if verbose>2: print('depth {} action {}'.format(depth,task1))
@@ -298,5 +318,8 @@ def seek_plan(agents, agent_name, depth, verbose=0):
                 solution = seek_plan(agents, agent_name, depth+1, verbose)
                 if solution != False:
                     return solution
+    if depth > 0:
+        # If nothing is applicable but we have made some progress return the new states of agents
+        return agents
     if verbose>2: print('depth {} returns failure'.format(depth))
     return False

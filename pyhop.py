@@ -165,6 +165,7 @@ class Agent:
         self.goal = None
         self.tasks = []
         self.plan = []
+        self.triggers = []
 
 agents = {}  # type: Dict[str, Agent]
 
@@ -204,6 +205,12 @@ def add_tasks(agent, tasks):
     if agent not in agents:
         agents[agent] = Agent(agent)
     agents[agent].tasks.extend(tasks)
+
+
+def declare_trigger(agent, trigger):
+    if agent not in agents:
+        agents[agent] = Agent(agent)
+    agents[agent].triggers.append(trigger)
 
 ############################################################
 # Commands to find out what the operators and methods are
@@ -302,6 +309,16 @@ def seek_plan(agents, agent_name, depth, verbose=0):
         if newagents:
             newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
             newagents[agent_name].plan = newagents[agent_name].plan + [task1]
+            # Check the triggers for any task to do
+            for a in agents.keys():
+                for t in newagents[a].triggers:
+                    triggered = t(newagents, newagents[a].state, agent_name)
+                    print(triggered)
+                    if triggered != False:
+                        newagents[a].tasks = triggered + newagents[a].tasks
+                        print("new trigger: ", a, triggered)
+                        break
+            print(newagents[agent_name].tasks)
             solution = seek_plan(newagents, agent_name, depth+1, verbose)
             if solution != False:
                 return solution

@@ -3,54 +3,91 @@ from copy import deepcopy
 
 from typing import Dict
 
+### Helper
+def check_redlight(state):
+    state.redLightCounter += 1
+    if state.redLightCounter >= 3:
+        state.redLightOn = True
+
 ### Operators definition
 
 def human_pick(agents, self_state, self_name, c):
+    if self_state.redLightOn:
+        return False
     if self_name in self_state.isReachableBy[c] and self_state.isCarrying[self_name] is None:
         for a in agents.values():
             a.state.isReachableBy[c] = []
             # should check if agent is in the same piece... Observability of action ?
-            # Can put in other agent head that he saw me executing or just the facts (the human has done it, or just it is done)
             a.state.isCarrying[self_name] = c
+            check_redlight(a.state)
         return agents
     else:
         return False
 
 
 def robot_pick(agents: Dict[str, pyhop.Agent], self_state, self_name, c):
+    if self_state.redLightOn:
+        return False
     if self_name in self_state.isReachableBy[c] and self_state.isCarrying[self_name] is None:
         for a in agents.values():
             a.state.isReachableBy[c] = []
             # should check if agent is in the same piece... Observability of action ?
             a.state.isCarrying[self_name] = c
+            check_redlight(a.state)
         return agents
     else:
         return False
 
 
 def human_stack(agents, self_state, self_name):
+    if self_state.redLightOn:
+        return False
     if self_state.isCarrying[self_name] is not None:
         c = self_state.isCarrying[self_name]
         for a in agents.values():
             a.state.isOnStack[c] = True
+            a.state.onStack.append(c)
             a.state.isCarrying[self_name] = None
+            check_redlight(a.state)
         return agents
     else:
         return False
 
 
 def robot_stack(agents, self_state, self_name):
+    if self_state.redLightOn:
+        return False
     if self_state.isCarrying[self_name] is not None:
         c = self_state.isCarrying[self_name]
         for a in agents.values():
             a.state.isOnStack[c] = True
+            a.state.onStack.append(c)
             a.state.isCarrying[self_name] = None
+            check_redlight(a.state)
+        return agents
+    else:
+        return False
+
+def switch_off_while_holding(agents, self_state, self_name):
+    if self_state.redLightOn and self_state.isCarrying[self_name] is not None:
+        for a in agents.values():
+            a.state.redLightCounter = 0
+            a.state.redLightOn = False
+        return agents
+    else:
+        return False
+
+def switch_off(agents, self_state, self_name):
+    if self_state.redLightOn and self_state.isCarrying[self_name] is None:
+        for a in agents.values():
+            a.state.redLightCounter = 0
+            a.state.redLightOn = False
         return agents
     else:
         return False
 
 
-pyhop.declare_operators("human", human_pick, human_stack)
+pyhop.declare_operators("human", human_pick, human_stack, switch_off_while_holding, switch_off)
 pyhop.declare_operators("robot", robot_pick, robot_stack)
 
 ### Methods definitions
@@ -84,19 +121,44 @@ def moveb_m_robot(agents, self_state: pyhop.State, self_name, c, goal):
 def stack_human(agents, self_state, self_name, goal):
     for c in self_state.cubes:
         if self_name in self_state.isReachableBy[c] and c in goal.isOnStack and goal.isOnStack[c] and not self_state.isOnStack[c]:
-            return [("move_one", c, goal), ("stack", goal)]
+            if c == next(x for x in goal.onStack if x not in self_state.onStack):
+                return [("move_one", c, goal), ("stack", goal)]
+            else:
+                return False
     return []
 
 def stack_robot(agents, self_state, self_name, goal):
     for c in self_state.cubes:
         if self_name in self_state.isReachableBy[c] and c in goal.isOnStack and goal.isOnStack[c] and not self_state.isOnStack[c]:
-            return [("move_one", c, goal), ("stack", goal)]
+            if c == next(x for x in goal.onStack if x not in self_state.onStack):
+                return [("move_one", c, goal), ("stack", goal)]
+            else:
+                return False
     return []
+
+def switch_light_off_human(agents, self_state, self_name):
+    if self_state.redLightOn:
+        if self_state.isCarrying[self_name] is not None:
+            return [("switch_off_while_holding",)]
+        else:
+            return [("switch_off",)]
+    else:
+        return []
 
 pyhop.declare_methods("human", "move_one", moveb_m_human)
 pyhop.declare_methods("robot", "move_one", moveb_m_robot)
 pyhop.declare_methods("human", "stack", stack_human)
 pyhop.declare_methods("robot", "stack", stack_robot)
+pyhop.declare_methods("human", "switch_light_off", switch_light_off_human)
+
+### Triggers
+
+def on_red_light(agents, self_state, self_name):
+    if self_state.redLightOn:
+        return [("switch_light_off",)]
+    return False
+
+pyhop.declare_trigger("human", on_red_light)
 
 pyhop.print_operators()
 
@@ -120,11 +182,15 @@ make_reachable_by(state1_h, state1_h.cubes[:3], ["human"])
 make_reachable_by(state1_h, state1_h.cubes[3:], ["robot"])
 put_on_stack(state1_h, state1_h.cubes, False)
 state1_h.isCarrying = {"human": None, "robot": None}
+state1_h.onStack = []
+state1_h.redLightOn = False
+state1_h.redLightCounter = 0
 
 state1_r = deepcopy(state1_h)
 
 goal1_h = pyhop.Goal("goal1_h")
 goal1_h.isOnStack = {"cube1": True, "cube2": True, "cube4": True}
+goal1_h.onStack = ["cube1", "cube4", "cube2"]
 goal1_r = deepcopy(goal1_h)
 
 pyhop.set_state("human", state1_h)
@@ -134,7 +200,7 @@ pyhop.add_tasks("robot", [('stack', goal1_r)])
 
 pyhop.print_state(pyhop.agents["human"].state)
 
-plans = pyhop.multi_agent_planning(verbose=0)
+plans = pyhop.multi_agent_planning(verbose=2)
 
 print(plans)
 

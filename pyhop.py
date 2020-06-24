@@ -166,6 +166,7 @@ class Agent:
         self.tasks = []
         self.plan = []
         self.triggers = []
+        self.global_plan = []
 
 agents = {}  # type: Dict[str, Agent]
 
@@ -245,6 +246,7 @@ def print_methods(agent=None):
 
 def multi_agent_planning(verbose=0):
     ag = plan_step(agents, list(agents.keys()), verbose)
+    print(ag["robot"].global_plan)
     return {a.name: a.plan for a in ag.values()} if ag != False else False
 
 def plan_step(agents, agents_order, verbose=0):
@@ -258,7 +260,6 @@ def plan_step(agents, agents_order, verbose=0):
     new_agents_order.append(new_agents_order.pop(ag_i))
     newagents = pyhop(agents, name, verbose)
     if newagents != False:
-        print("new order:", agents_order)
         return plan_step(copy.deepcopy(newagents), new_agents_order, verbose)
     else:
         if new_agents_order != agents_order:
@@ -309,6 +310,7 @@ def seek_plan(agents, agent_name, depth, verbose=0):
         if newagents:
             newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
             newagents[agent_name].plan = newagents[agent_name].plan + [task1]
+            newagents["robot"].global_plan = newagents["robot"].global_plan + [task1]
             # Check the triggers for any task to do
             for a in agents.keys():
                 for t in newagents[a].triggers:
@@ -318,7 +320,6 @@ def seek_plan(agents, agent_name, depth, verbose=0):
                         newagents[a].tasks = triggered + newagents[a].tasks
                         print("new trigger: ", a, triggered)
                         break
-            print(newagents[agent_name].tasks)
             solution = seek_plan(newagents, agent_name, depth+1, verbose)
             if solution != False:
                 return solution
@@ -337,6 +338,8 @@ def seek_plan(agents, agent_name, depth, verbose=0):
                     return solution
     if depth > 0:
         # If nothing is applicable but we have made some progress return the new states of agents
+        if verbose > 1:
+            print("depth {} returns failure, but with progress. Continuing...".format(depth))
         return agents
     if verbose>2: print('depth {} returns failure'.format(depth))
     return False

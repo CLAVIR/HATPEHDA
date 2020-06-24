@@ -258,15 +258,12 @@ def plan_step(agents, agents_order, verbose=0):
     name = agents[agents_order[ag_i]].name
     new_agents_order = agents_order[:]
     new_agents_order.append(new_agents_order.pop(ag_i))
+
     newagents = pyhop(agents, name, verbose)
     if newagents != False:
         return plan_step(copy.deepcopy(newagents), new_agents_order, verbose)
     else:
-        if new_agents_order != agents_order:
-            print("new order:", agents_order)
-            return plan_step(copy.deepcopy(agents), new_agents_order, verbose)
-        else:
-            return False
+        return plan_step(copy.deepcopy(agents), new_agents_order, verbose)
 
 
 

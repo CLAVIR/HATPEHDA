@@ -15,7 +15,7 @@ Copyright 2013 Dana S. Nau - http://www.cs.umd.edu/~nau
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
-   
+
 Pyhop should work correctly in both Python 2.7 and Python 3.2.
 For examples of how to use it, see the example files that come with Pyhop.
 
@@ -60,20 +60,20 @@ Pyhop provides the following classes and functions:
 # Pyhop's planning algorithm is very similar to the one in SHOP and JSHOP
 # (see http://www.cs.umd.edu/projects/shop). Like SHOP and JSHOP, Pyhop uses
 # HTN methods to decompose tasks into smaller and smaller subtasks, until it
-# finds tasks that correspond directly to actions. But Pyhop differs from 
+# finds tasks that correspond directly to actions. But Pyhop differs from
 # SHOP and JSHOP in several ways that should make it easier to use Pyhop
 # as part of other programs:
-# 
+#
 # (1) In Pyhop, one writes methods and operators as ordinary Python functions
 #     (rather than using a special-purpose language, as in SHOP and JSHOP).
-# 
+#
 # (2) Instead of representing states as collections of logical assertions,
 #     Pyhop uses state-variable representation: a state is a Python object
 #     that contains variable bindings. For example, to define a state in
 #     which box b is located in room r1, you might write something like this:
 #     s = State()
 #     s.loc['b'] = 'r1'
-# 
+#
 # (3) You also can define goals as Python objects. For example, to specify
 #     that a goal of having box b in room r2, you might write this:
 #     g = Goal()
@@ -83,69 +83,91 @@ Pyhop provides the following classes and functions:
 #     your methods and operators, and passing g to them as an argument.
 #     In the same fashion, you could tell Pyhop to achieve any one of
 #     several different goals, or to achieve them in some desired sequence.
-# 
+#
 # (4) Unlike SHOP and JSHOP, Pyhop doesn't include a Horn-clause inference
 #     engine for evaluating preconditions of operators and methods. So far,
 #     I've seen no need for it; I've found it easier to write precondition
 #     evaluations directly in Python. But I could consider adding such a
 #     feature if someone convinces me that it's really necessary.
-# 
+#
 # Accompanying this file are several files that give examples of how to use
 # Pyhop. To run them, launch python and type "import blocks_world_examples"
 # or "import simple_travel_example".
 
 
 from __future__ import print_function
-import copy,sys, pprint
+import copy, sys, pprint
 
 ############################################################
 # States and goals
 from typing import Dict, Any
 
+from collections import namedtuple
+
+Plan = namedtuple("Plan", ["plan", "cost"])
+
+
+class Action():
+    ID = 0
+
+    def __init__(self):
+        self.id = Action.ID
+        Action.ID += 1
+        self.action = None
+        self.cost = 0
+
 
 class State():
     """A state is just a collection of variable bindings."""
-    def __init__(self,name):
+
+    def __init__(self, name):
         self.__name__ = name
+
 
 class Goal():
     """A goal is just a collection of variable bindings."""
-    def __init__(self,name):
+
+    def __init__(self, name):
         self.__name__ = name
 
 
 ### print_state and print_goal are identical except for the name
 
-def print_state(state,indent=4):
+def print_state(state, indent=4):
     """Print each variable in state, indented by indent spaces."""
     if state != False:
-        for (name,val) in vars(state).items():
+        for (name, val) in vars(state).items():
             if name != '__name__':
                 for x in range(indent): sys.stdout.write(' ')
                 sys.stdout.write(state.__name__ + '.' + name)
                 print(' =', val)
-    else: print('False')
+    else:
+        print('False')
 
-def print_goal(goal,indent=4):
+
+def print_goal(goal, indent=4):
     """Print each variable in goal, indented by indent spaces."""
     if goal != False:
-        for (name,val) in vars(goal).items():
+        for (name, val) in vars(goal).items():
             if name != '__name__':
                 for x in range(indent): sys.stdout.write(' ')
                 sys.stdout.write(goal.__name__ + '.' + name)
                 print(' =', val)
-    else: print('False')
+    else:
+        print('False')
+
 
 ############################################################
 # Helper functions that may be useful in domain models
 
-def forall(seq,cond):
+def forall(seq, cond):
     """True if cond(x) holds for all x in seq, otherwise False."""
     for x in seq:
         if not cond(x): return False
     return True
 
-def find_if(cond,seq):
+
+def find_if(cond, seq):
     """
     Return the first x in seq such that cond(x) holds, if there is one.
     Otherwise return None.
@@ -153,6 +175,7 @@ def find_if(cond,seq):
     for x in seq:
         if cond(x): return x
     return None
+
 
 ############################################################
 # Commands to tell Pyhop what the operators and methods are
@@ -165,23 +188,28 @@ class Agent:
         self.goal = None
         self.tasks = []
         self.plan = []
+        self.plan_cost = 0.0
         self.triggers = []
         self.global_plan = []
+        self.global_plan_cost = 0.0
+
 
 agents = {}  # type: Dict[str, Agent]
 
+
 def declare_operators(agent, *op_list):
     """
-    Call this after defining the operators, to tell Pyhop what they are. 
+    Call this after defining the operators, to tell Pyhop what they are.
     op_list must be a list of functions, not strings.
     """
     if agent not in agents:
         agents[agent] = Agent(agent)
 
-    agents[agent].operators.update({op.__name__:op for op in op_list})
+    agents[agent].operators.update({op.__name__: op for op in op_list})
     return agents
 
-def declare_methods(agent, task_name,*method_list):
+
+def declare_methods(agent, task_name, *method_list):
     """
     Call this once for each task, to tell Pyhop what the methods are.
     task_name must be a string.
@@ -189,18 +217,21 @@ def declare_methods(agent, task_name,*method_list):
     """
     if agent not in agents:
         agents[agent] = Agent(agent)
-    agents[agent].methods.update({task_name:list(method_list)})
+    agents[agent].methods.update({task_name: list(method_list)})
     return agents
+
 
 def set_state(agent, state):
     if agent not in agents:
         agents[agent] = Agent(agent)
     agents[agent].state = state
 
+
 def set_goal(agent, goal):
     if agent not in agents:
         agents[agent] = Agent(agent)
     agents[agent].goal = goal
+
 
 def add_tasks(agent, tasks):
     if agent not in agents:
@@ -212,6 +243,7 @@ def declare_trigger(agent, trigger):
     if agent not in agents:
         agents[agent] = Agent(agent)
     agents[agent].triggers.append(trigger)
+
 
 ############################################################
 # Commands to find out what the operators and methods are
@@ -226,10 +258,11 @@ def print_operators(agent=None):
     else:
         print('OPERATORS:', ', '.join(agents[agent].operators))
 
+
 def print_methods(agent=None):
     """Print out a table of what the methods are for each task"""
     print("==METHODS==")
-    print('\t{:<14}{}'.format('TASK:','METHODS:'))
+    print('\t{:<14}{}'.format('TASK:', 'METHODS:'))
     if agent is None:
         for a, ag in agents.items():
             print("Agent:", a)
@@ -242,16 +275,37 @@ def print_methods(agent=None):
 
 
 ############################################################
+# Cost related functions
+# Cost functions must be able to take agents before action, agents after action,
+# cost-linked arguments and arguments of the action
+
+def fixed_cost(cost):
+    return cost
+
+
+############################################################
 # The actual planner
 
+ma_solutions = []
+min_cost = 9999999
+
+
 def multi_agent_planning(verbose=0):
+    global ma_solutions
+    ma_solutions = []
     ag = plan_step(agents, list(agents.keys()), verbose)
-    print(ag["robot"].global_plan)
+    #print(ag["robot"].global_plan, "with value:", ag["robot"].global_plan_cost)
     return {a.name: a.plan for a in ag.values()} if ag != False else False
 
+
 def plan_step(agents, agents_order, verbose=0):
+    global min_cost, ma_solutions
     if all(a.tasks == [] for a in agents.values()):
         print("A multi agent solution has been found")
+        ma_solutions.append(agents)
+        #print(agents["robot"].global_plan_cost, min_cost)
+        if agents["robot"].global_plan_cost < min_cost:
+            min_cost = agents["robot"].global_plan_cost
         return agents
 
     ag_i = next(i for i in range(len(agents_order)) if agents[agents_order[i]].tasks != [])
@@ -261,25 +315,37 @@ def plan_step(agents, agents_order, verbose=0):
 
     newagents = pyhop(agents, name, verbose)
     if newagents != False:
-        return plan_step(copy.deepcopy(newagents), new_agents_order, verbose)
+        sol = False
+        # print(newagents)
+        for na in newagents:
+            if na["robot"].global_plan_cost > min_cost:
+                #pass
+                continue
+            #print(na["robot"].tasks)
+            sol = plan_step(copy.deepcopy(na), new_agents_order, verbose)
+        return sol
     else:
         return plan_step(copy.deepcopy(agents), new_agents_order, verbose)
 
 
-
-
-def pyhop(agents, agent_name ,verbose=0):
+def pyhop(agents, agent_name, verbose=0):
     """
-    Try to find a plan that accomplishes tasks in state. 
+    Try to find a plan that accomplishes tasks in state.
     If successful, return the plan. Otherwise return False.
     """
     if agent_name not in agents:
         print("Agent is not declared!")
         return
-    if verbose>0: print('** pyhop, verbose={}: **\n  agent={}\n   state = {}\n   tasks = {}'.format(verbose, agent_name, agents[agent_name].state.__name__, agents[agent_name].tasks))
+    if verbose > 0: print(
+        '** pyhop, verbose={}: **\n   agent = {}\n   state = {}\n   tasks = {}'.format(verbose, agent_name, agents[
+            agent_name].state.__name__, agents[agent_name].tasks))
     result = seek_plan(agents, agent_name, 0, verbose)
-    if verbose>0: print('** result =',result,'\n')
+    if verbose > 0: print('** result =', result, '\n')
     return result
+
+
+agent_valid_plans = []
+
 
 def seek_plan(agents, agent_name, depth, verbose=0):
     """
@@ -288,17 +354,31 @@ def seek_plan(agents, agent_name, depth, verbose=0):
     - depth is the recursion depth, for use in debugging
     - verbose is whether to print debugging messages
     """
-    if verbose>1: print('depth {} tasks {}'.format(depth,agents[agent_name].tasks))
+    global agent_valid_plans, min_sub_cost
+    if verbose > 1: print('depth {} tasks {}'.format(depth, agents[agent_name].tasks))
     if agents[agent_name].tasks == []:
-        if verbose>2: print('depth {} returns plan {}'.format(depth, agents[agent_name].plan))
-        return agents
+        if verbose > 2: print('depth {} returns plan {}'.format(depth, agents[agent_name].plan))
+        agent_valid_plans.append(agents)
+        return [agents]
     task1 = agents[agent_name].tasks[0]
     if task1[0] in agents[agent_name].operators:
-        if verbose>2: print('depth {} action {}'.format(depth,task1))
+        if verbose > 2: print('depth {} action {}'.format(depth, task1))
         operator = agents[agent_name].operators[task1[0]]
         newagents = copy.deepcopy(agents)
-        newagents = operator(newagents, newagents[agent_name].state, agent_name, *task1[1:])
-        if verbose>2:
+        tmp = operator(newagents, newagents[agent_name].state, agent_name, *task1[1:])
+        cost = 0.0
+        if isinstance(tmp, tuple):
+            newagents, cost = tmp
+        else:
+            if tmp is not None and tmp is not False:
+                print(
+                    "Warning action {} has been sucessfully used, but no cost has been defined, assuming cost is 0".format(
+                        task1[0]))
+                newagents = tmp
+                cost = 0.0
+            else:
+                return False
+        if verbose > 2:
             print('depth {} new self state:'.format(depth))
             if newagents:
                 print_state(newagents[agent_name].state)
@@ -307,7 +387,9 @@ def seek_plan(agents, agent_name, depth, verbose=0):
         if newagents:
             newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
             newagents[agent_name].plan = newagents[agent_name].plan + [task1]
+            newagents[agent_name].plan_cost += cost
             newagents["robot"].global_plan = newagents["robot"].global_plan + [task1]
+            newagents["robot"].global_plan_cost += cost
             # Check the triggers for any task to do
             for a in agents.keys():
                 for t in newagents[a].triggers:
@@ -317,26 +399,32 @@ def seek_plan(agents, agent_name, depth, verbose=0):
                         newagents[a].tasks = triggered + newagents[a].tasks
                         print("new trigger: ", a, triggered)
                         break
-            solution = seek_plan(newagents, agent_name, depth+1, verbose)
+            solution = seek_plan(newagents, agent_name, depth + 1, verbose)
             if solution != False:
                 return solution
+            elif depth > 0:
+                return [newagents]
+    solutions = []
     if task1[0] in agents[agent_name].methods:
-        if verbose>2: print('depth {} method instance {}'.format(depth,task1))
+        if verbose > 2: print('depth {} method instance {}'.format(depth, task1))
         relevant = agents[agent_name].methods[task1[0]]
         for method in relevant:
-            subtasks = method(list(agents.values()), agents[agent_name].state, agent_name, *task1[1:])
+            newagents = copy.deepcopy(agents)
+            subtasks = method(list(newagents.values()), newagents[agent_name].state, agent_name, *task1[1:])
             # Can't just say "if subtasks:", because that's wrong if subtasks == []
-            if verbose>2:
-                print('depth {} new tasks: {}'.format(depth,subtasks))
+            if verbose > 2:
+                print('depth {} new tasks: {}'.format(depth, subtasks))
             if subtasks != False:
-                agents[agent_name].tasks = subtasks + agents[agent_name].tasks[1:]
-                solution = seek_plan(agents, agent_name, depth+1, verbose)
-                if solution != False:
-                    return solution
-    if depth > 0:
+                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
+                sol = seek_plan(newagents, agent_name, depth + 1, verbose)
+                if sol != False:
+                    solutions += sol
+    if len(solutions) > 0:
+        return solutions
+    elif depth > 0:
         # If nothing is applicable but we have made some progress return the new states of agents
         if verbose > 1:
             print("depth {} returns failure, but with progress. Continuing...".format(depth))
-        return agents
-    if verbose>2: print('depth {} returns failure'.format(depth))
+        return [agents]
+    if verbose > 2: print('depth {} returns failure'.format(depth))
     return False

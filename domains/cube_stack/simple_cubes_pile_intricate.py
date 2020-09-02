@@ -3,6 +3,13 @@ from copy import deepcopy
 
 from typing import Dict
 
+"""
+Simple domain where a robot and a human have 3 different numbered cube each. They must build a 3 block height stack with 
+a specific order. The order is such as the robot must place one cube, then the human and finally the robot again.
+Result:
+Plan : [('human_pick', 'cube1'), ('human_stack',), ('robot_pick', 'cube4'), ('robot_stack',), ('human_pick', 'cube2'), ('human_stack',)] with cost: 0.0
+"""
+
 ### Operators definition
 
 def human_pick(agents, self_state, self_name, c):
@@ -57,27 +64,11 @@ pyhop.declare_operators("robot", robot_pick, robot_stack)
 ### Methods definitions
 
 def moveb_m_human(agents, self_state, self_name, c, goal):
-    """
-    This method implements the following block-stacking algorithm:
-    If there's a block that can be moved to its final position, then
-    do so and call move_blocks recursively. Otherwise, if there's a
-    block that needs to be moved and can be moved to the table, then
-    do so and call move_blocks recursively. Otherwise, no blocks need
-    to be moved.
-    """
     if self_name in self_state.isReachableBy[c] and c in goal.isOnStack and goal.isOnStack[c] and not self_state.isOnStack[c]:
         return [("human_pick", c), ("human_stack",)]
     return []
 
 def moveb_m_robot(agents, self_state: pyhop.State, self_name, c, goal):
-    """
-    This method implements the following block-stacking algorithm:
-    If there's a block that can be moved to its final position, then
-    do so and call move_blocks recursively. Otherwise, if there's a
-    block that needs to be moved and can be moved to the table, then
-    do so and call move_blocks recursively. Otherwise, no blocks need
-    to be moved.
-    """
     if self_name in self_state.isReachableBy[c] and c in goal.isOnStack and goal.isOnStack[c] and not self_state.isOnStack[c]:
             return [("robot_pick", c), ("robot_stack",)]
     return []
@@ -144,6 +135,9 @@ pyhop.add_tasks("robot", [('stack', goal1_r)])
 pyhop.print_state(pyhop.agents["human"].state)
 
 plans = pyhop.multi_agent_planning(verbose=0)
+
+for ags in pyhop.ma_solutions:
+    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
 
 print(plans)
 

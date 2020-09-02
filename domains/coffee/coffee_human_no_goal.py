@@ -3,6 +3,17 @@ from copy import deepcopy
 
 from typing import Dict
 
+
+"""
+This example depicts a two rooms place, kitchen and experimentation room. The robot start at the experimentation room
+with the task to get a coffee. The coffee machine is in the kitchen. The robot knows that a human with no task to do is 
+in the kitchen. The robot can give a goal to the human and handover object to and from the human.
+
+Result:
+Plan : [('robot_pick_mug', 'mug1'), ('robot_navigate', 'kitchen'), ('robot_ask_to_human_do_task', 'human', ('human_get_mug_make_coffee', <pyhop.Goal object at 0x7f52550179e8>, 'robot', 'mug1')), ('robot_handover_give', 'human'), ('human_handover_take', 'robot'), ('human_make_coffee', 'mug1'), ('human_handover_give', 'robot'), ('robot_handover_end',), ('robot_handover_take', 'human'), ('robot_navigate', 'experimentation_room'), ('human_handover_end',)] with cost: 0.0
+
+"""
+
 ### Helpers
 
 def agentsInSameRoomAs(state, agent_name, agents):
@@ -174,5 +185,8 @@ pyhop.add_tasks("robot", [("robot_get_coffee", goal1_r, "mug1")])
 pyhop.print_state(pyhop.agents["robot"].state)
 
 plans = pyhop.multi_agent_planning(verbose=0)
+
+for ags in pyhop.ma_solutions:
+    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
 
 print(plans)

@@ -13,6 +13,8 @@ from functools import partial, update_wrapper
 from itertools import permutations
 from copy import deepcopy
 
+from pyhop.reg import REGHandler
+
 import time
 
 
@@ -47,6 +49,8 @@ Plan : [('robot_tell_human_to_tidy', 'human', 'cube_BGTB'), ('human_pick_cube', 
 """
 
 ### Helpers
+
+regHandler = None
 
 def get_box_containing_cube(state, cube):
     box = None
@@ -85,9 +89,11 @@ def is_cube_pickable_by(state, name, cube):
 ### Core
 
 def retrieve_state_from_ontology(agent_name, state):
-    #OntologiesManipulator.add(agent_name)
-    #onto = OntologiesManipulator.get(agent_name)
-    onto = OntologyManipulator()
+    ontos = OntologiesManipulator()
+    ontos.waitInit()
+    ontos.add(agent_name)
+    onto = ontos.get(agent_name)
+    #onto = OntologyManipulator()
     onto.close()
     for t, rels in state.types.items():
         indivs = onto.individuals.getType(t)
@@ -107,8 +113,16 @@ def retrieve_state_from_ontology(agent_name, state):
 ### Actions
 
 def robot_tell_human_to_tidy(agents: Dict[str, pyhop.Agent], self_state, self_name, human, cube):
-    agents[human].tasks.insert(0, ("tidy", cube))
-    return agents, 2.  # TODO: Run REG to get cost and feasability
+    if is_cube_pickable_by(self_state, human, cube):
+        ctx = [("?0", "isOnTopOf", "table_1")]
+        symbols = {"?0": cube}
+        reg = regHandler.get_re(self_name, self_state, ctx, symbols, cube)
+        if not reg.success:
+            return False
+        cost = len(reg.sparqlResult)
+        agents[human].tasks.insert(0, ("tidy", cube))
+        return agents, cost
+    return False
 
 def robot_wait_for_human_to_tidy(agents: Dict[str, pyhop.Agent], self_state, self_name, human, cube):
     # Todo: Check if in goal box
@@ -171,8 +185,10 @@ pyhop.declare_methods("human", "tidy", human_tidy)
 
 if __name__ == "__main__":
 
+    regHandler = REGHandler()
+
     state_r = pyhop.State("robot_init")
-    state_r.types = {"Agent": ["isHolding"], "Cube": ["isIn", "isHeldBy"], "Box": ["hasIn"], "ReachableDtBox": [], "ReceiverReachableDtBox": [],
+    state_r.types = {"Agent": ["isHolding"], "Cube": ["isIn", "isHeldBy"], "Box": [], "ReachableDtBox": [], "ReceiverReachableDtBox": [],
                    "VisibleDtBox": [], "ReceiverVisibleDtBox": [], "DirectorVisibleDtBox": [],
                    "DirectorReachableDtBox": [], "DtDirector": [], "DtReceiver": []}
     state_r = retrieve_state_from_ontology("robot", state_r)
@@ -181,7 +197,7 @@ if __name__ == "__main__":
     state_r.isHolding["human"] = []
 
     state_h = deepcopy(state_r)  # TODO: Retrieve it from the ontology
-    generate_tidy_all_orders(["cube_GBTG", "cube_BGCB", "cube_GGCB", "cube_BGTB"])
+    generate_tidy_all_orders(["cube_GBTG", "cube_BBTG", "cube_GBCG", "cube_GBTB"])
     pyhop.set_state("human", state_h)
     pyhop.set_state("robot", state_r)
     pyhop.add_tasks("robot", [("tidy",)])
@@ -197,4 +213,7 @@ if __name__ == "__main__":
     for ags in pyhop.ma_solutions:
         print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
     print("Took", end - start, "seconds")
+
+    regHandler.export_log("robot_planning")
+    regHandler.cleanup()
 

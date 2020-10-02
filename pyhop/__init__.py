@@ -428,3 +428,90 @@ def seek_plan(agents, agent_name, depth, verbose=0):
         return [agents]
     if verbose > 2: print('depth {} returns failure'.format(depth))
     return False
+
+
+def seek_plan_robot(agents, agent_name, sols):
+    if agents[agent_name].tasks == []:
+        sols.append(agents)
+        return True
+    task = agents[agent_name].tasks[0]
+    if task[0] in agents[agent_name].operators:
+        operator = agents[agent_name].operators[task[0]]
+        newagents = copy.deepcopy(agents)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
+        if result == False:
+            print(task[0], "not feasible for the robot")
+            return False
+        newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
+        newagents[agent_name].plan.append(task)
+        print_state(newagents["human"].state)
+        new_possible_agents = get_human_next_actions(newagents)
+        if new_possible_agents == False:
+            # No action is feasible for the human
+            print("No action feasible for the human")
+            return False
+        for ag in new_possible_agents:
+            seek_plan_robot(ag, agent_name, sols)
+        print("robot plan:", newagents["robot"].plan, "human plan:", newagents["human"].plan)
+        return True
+    if task[0] in agents[agent_name].methods:
+        decompos = agents[agent_name].methods[task[0]]
+        reachable_agents = []
+        for decompo in decompos:
+            newagents = copy.deepcopy(agents)
+            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
+            if subtasks != False:
+                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
+                reachable_agents.append(newagents)
+        if reachable_agents == []:
+            # No decomposition is achievable for this task
+            print("No decompo found for the robot for task:", task[0])
+            print("robot plan:", newagents["robot"].plan, "human plan:", newagents["human"].plan)
+            return False
+        else:
+            for ag in reachable_agents:
+                seek_plan_robot(ag, agent_name, sols)
+            return True
+    return False
+
+
+
+
+def get_human_next_actions(agents):
+    next_actions = get_first_applicable_action(agents, "human")
+    if next_actions == False:
+        newagents = copy.deepcopy(agents)
+        newagents["human"].plan.append(("WAIT",))  # Default action
+        return [newagents]
+    else:
+        return next_actions
+
+
+def get_first_applicable_action(agents, agent_name):
+    if agents[agent_name].tasks == []:
+        newagents = copy.deepcopy(agents)
+        newagents[agent_name].plan.append(("IDLE",))  # Default action
+        return [newagents]
+    task = agents[agent_name].tasks[0]
+    if task[0] in agents[agent_name].operators:
+        operator = agents[agent_name].operators[task[0]]
+        newagents = copy.deepcopy(agents)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
+        if result == False:
+            return False
+        newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
+        newagents[agent_name].plan.append(task)
+        return [newagents]
+    if task[0] in agents[agent_name].methods:
+        decompos = agents[agent_name].methods[task[0]]
+        for decompo in decompos:
+            newagents = copy.deepcopy(agents)
+            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
+            if subtasks != False:
+                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
+                return get_first_applicable_action(newagents, agent_name)
+        # No decompo or all decompo failed
+        return False
+    return False
+
+

@@ -104,6 +104,13 @@ from typing import Dict
 from typing import Dict, Any
 
 from collections import namedtuple
+from enum import Enum
+
+class HumanPredictionType(Enum):
+    FIRST_APPLICABLE_ACTION = 0
+    ALL_APPLICABLE_ACTIONS = 1
+
+human_prediction_type = HumanPredictionType.ALL_APPLICABLE_ACTIONS
 
 Plan = namedtuple("Plan", ["plan", "cost"])
 
@@ -499,13 +506,62 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols):
 
 
 def get_human_next_actions(agents):
-    next_actions = get_first_applicable_action(agents, "human")
-    if next_actions == False:
+    global human_prediction_type
+    if human_prediction_type == HumanPredictionType.FIRST_APPLICABLE_ACTION:
+        next_actions = get_first_applicable_action(agents, "human")
+        if next_actions == False:
+            newagents = copy.deepcopy(agents)
+            newagents["human"].plan.append(Operator("WAIT", [], None, None))  # Default action
+            return [newagents]
+        else:
+            return next_actions
+    elif human_prediction_type == HumanPredictionType.ALL_APPLICABLE_ACTIONS:
+        sols = []
+        result = get_all_applicable_actions(agents, "human", sols)
+        if result is False:
+            raise Exception("Error during human HTN exploration")
+        if sols == []:
+            newagents = copy.deepcopy(agents)
+            newagents["human"].plan.append(Operator("WAIT", [], None, None))  # Default action
+            return [newagents]
+        else:
+            return sols
+
+
+
+
+def get_all_applicable_actions(agents, agent_name, solutions):
+    if agents[agent_name].tasks == []:
         newagents = copy.deepcopy(agents)
-        newagents["human"].plan.append(("WAIT",))  # Default action
-        return [newagents]
-    else:
-        return next_actions
+        newagents[agent_name].plan.append(Operator("IDLE", [], newagents[agent_name].currently_decomposed_task, None))
+        solutions.append(newagents)
+        return
+    task = agents[agent_name].tasks[0]
+    if task[0] in agents[agent_name].operators:
+        operator = agents[agent_name].operators[task[0]]
+        newagents = copy.deepcopy(agents)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
+        if result == False:
+            return
+        newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
+        newagents[agent_name].plan.append(
+            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task, operator))
+        solutions.append(newagents)
+        return
+    if task[0] in agents[agent_name].methods:
+        decompos = agents[agent_name].methods[task[0]]
+        for decompo in decompos:
+            print(decompo)
+
+            newagents = copy.deepcopy(agents)
+            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
+            if subtasks != False:
+                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
+                newagents[agent_name].currently_decomposed_task = AbstractTask(
+                    task[0], task[1:], newagents[agent_name].currently_decomposed_task, subtasks)
+                get_all_applicable_actions(newagents, agent_name, solutions)
+        return
+    return False
 
 
 def get_first_applicable_action(agents, agent_name):

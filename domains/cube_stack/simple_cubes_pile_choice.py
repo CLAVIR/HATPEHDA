@@ -156,6 +156,8 @@ plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
 print(plans)
 
 print(len(sol), "solutions found")
+from pyhop import gui
+gui.show_plan(sol)
 for agents in sol:
     reconstituted_plan = [None] * (2*len(agents["robot"].plan))
     reconstituted_plan[::2] = agents["robot"].plan

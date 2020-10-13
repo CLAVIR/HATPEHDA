@@ -45,6 +45,9 @@ def human_stack(agents, self_state, self_name):
     else:
         return False
 
+def human_wait(agents, self_state, self_name):
+    return agents
+
 
 def robot_stack(agents, self_state, self_name):
     if self_state.isCarrying[self_name] is not None:
@@ -58,7 +61,7 @@ def robot_stack(agents, self_state, self_name):
         return False
 
 
-pyhop.declare_operators("human", human_pick, human_stack)
+pyhop.declare_operators("human", human_pick, human_stack, human_wait)
 pyhop.declare_operators("robot", robot_pick, robot_stack)
 
 ### Methods definitions
@@ -83,8 +86,12 @@ def stack_human(agents, self_state, self_name, goal):
     return []
 
 def wait_uncoop_human(agents, self_state, self_name, goal):
-    if goal.onStack != self_state.onStack:
-        return [("wait", ), ("stack", goal)]
+    for c in self_state.cubes:
+        if self_name in self_state.isReachableBy[c] and c in goal.isOnStack and goal.isOnStack[c] and not self_state.isOnStack[c]:
+            if c == next(x for x in goal.onStack if x not in self_state.onStack and self_name in self_state.isReachableBy[x]):
+                return [("human_wait", ), ("stack", goal)]
+            else:
+                return False
     return []
 
 def stack_robot(agents, self_state, self_name, goal):
@@ -144,6 +151,7 @@ pyhop.print_state(pyhop.agents["human"].state)
 
 sol = []
 plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+
 
 print(plans)
 

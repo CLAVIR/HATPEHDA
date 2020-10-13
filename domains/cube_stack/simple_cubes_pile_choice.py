@@ -153,7 +153,7 @@ for agents in sol:
     reconstituted_plan[::2] = agents["robot"].plan
     reconstituted_plan[1::2] = agents["human"].plan
     for name, a in agents.items():
-        print(name, "plan:", a.plan)
+        print(name, "plan:", [("{} {}".format(o.why.id, o.why.name) if o.why is not None else None, o.name, *o.parameters) for o in a.plan])
     print("complete plan:", reconstituted_plan)
 
     print("######")

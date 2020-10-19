@@ -116,19 +116,19 @@ Plan = namedtuple("Plan", ["plan", "cost"])
 
 class Task():
     __ID = 0
-    def __init__(self, name, parameters, why, how):
+    def __init__(self, name, parameters, why, decompo_number):
         self.id = Task.__ID
         Task.__ID += 1
         self.name = name
         self.parameters = parameters
         self.why = why  # From which task it is decomposed
-        self.how = how  # Tasks it is decomposed into
+        self.decompo_number = decompo_number  # The number of the decomposition from the abstract task (self.why)
 
 
 
 class Operator(Task):
-    def __init__(self, name, parameters, why, function):
-        super().__init__(name, parameters, why, how=None)
+    def __init__(self, name, parameters, why, decompo_number, function):
+        super().__init__(name, parameters, why, decompo_number)
         self.function = function
         self.cost = 0
 
@@ -136,8 +136,10 @@ class Operator(Task):
         return str((self.name, *self.parameters))
 
 class AbstractTask(Task):
-    def __init__(self, name, parameters, why, how):
-        super().__init__(name, parameters, why, how)
+    def __init__(self, name, parameters, why, decompo_number, how, number_of_decompo):
+        super().__init__(name, parameters, why, decompo_number)
+        self.how = how  # List of task networks this task has been decomposed into (after each decompo function has been called)
+        self.number_of_decompo = number_of_decompo  # How many decomposition this task has (maybe not successful ones)
 
 
 
@@ -217,6 +219,7 @@ class Agent:
         self.global_plan = []
         self.global_plan_cost = 0.0
         self.currently_decomposed_task = None
+        self.currently_explored_decompo_number = None
 
 
 agents = {}  # type: Dict[str, Agent]
@@ -469,8 +472,8 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols):
             return False
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
         newagents[agent_name].plan.append(
-            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task, operator))
-        print_state(newagents["human"].state)
+            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task,
+                     newagents[agent_name].currently_explored_decompo_number, operator))
         new_possible_agents = get_human_next_actions(newagents)
         if new_possible_agents == False:
             # No action is feasible for the human
@@ -483,13 +486,17 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols):
     if task[0] in agents[agent_name].methods:
         decompos = agents[agent_name].methods[task[0]]
         reachable_agents = []
-        for decompo in decompos:
+        decomposed_task = AbstractTask(task[0], task[1:], agents[agent_name].currently_decomposed_task,
+                                       agents[agent_name].currently_explored_decompo_number, [],
+                                       len(agents[agent_name].methods[task[0]]))
+        for i, decompo in enumerate(decompos):
             newagents = copy.deepcopy(agents)
             subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
             if subtasks != False:
                 newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
-                newagents[agent_name].currently_decomposed_task = AbstractTask(
-                    task[0], task[1:], newagents[agent_name].currently_decomposed_task, subtasks)
+                decomposed_task.how.append(subtasks)
+                newagents[agent_name].currently_explored_decompo_number = i
+                newagents[agent_name].currently_decomposed_task = decomposed_task
                 reachable_agents.append(newagents)
         if reachable_agents == []:
             # No decomposition is achievable for this task
@@ -533,7 +540,8 @@ def get_human_next_actions(agents):
 def get_all_applicable_actions(agents, agent_name, solutions):
     if agents[agent_name].tasks == []:
         newagents = copy.deepcopy(agents)
-        newagents[agent_name].plan.append(Operator("IDLE", [], newagents[agent_name].currently_decomposed_task, None))
+        newagents[agent_name].plan.append(Operator("IDLE", [], newagents[agent_name].currently_decomposed_task,
+                                                   newagents[agent_name].currently_explored_decompo_number, None))
         solutions.append(newagents)
         return
     task = agents[agent_name].tasks[0]
@@ -545,20 +553,23 @@ def get_all_applicable_actions(agents, agent_name, solutions):
             return
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
         newagents[agent_name].plan.append(
-            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task, operator))
+            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task,
+                     newagents[agent_name].currently_explored_decompo_number, operator))
         solutions.append(newagents)
         return
     if task[0] in agents[agent_name].methods:
         decompos = agents[agent_name].methods[task[0]]
-        for decompo in decompos:
-            print(decompo)
-
+        decomposed_task = AbstractTask(task[0], task[1:], agents[agent_name].currently_decomposed_task,
+                                       agents[agent_name].currently_explored_decompo_number, [],
+                                       len(agents[agent_name].methods[task[0]]))
+        for i, decompo in enumerate(decompos):
             newagents = copy.deepcopy(agents)
             subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
             if subtasks != False:
                 newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
-                newagents[agent_name].currently_decomposed_task = AbstractTask(
-                    task[0], task[1:], newagents[agent_name].currently_decomposed_task, subtasks)
+                decomposed_task.how.append(subtasks)
+                newagents[agent_name].currently_explored_decompo_number = i
+                newagents[agent_name].currently_decomposed_task = decomposed_task
                 get_all_applicable_actions(newagents, agent_name, solutions)
         return
     return False
@@ -582,13 +593,14 @@ def get_first_applicable_action(agents, agent_name):
         return [newagents]
     if task[0] in agents[agent_name].methods:
         decompos = agents[agent_name].methods[task[0]]
+        decomposed_task = AbstractTask(task[0], task[1:], agents[agent_name].currently_decomposed_task, [])
         for decompo in decompos:
             newagents = copy.deepcopy(agents)
             subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
             if subtasks != False:
                 newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
-                newagents[agent_name].currently_decomposed_task = AbstractTask(
-                    task[0], task[1:], newagents[agent_name].currently_decomposed_task, subtasks)
+                decomposed_task.how.append(subtasks)
+                newagents[agent_name].currently_decomposed_task = decomposed_task
                 return get_first_applicable_action(newagents, agent_name)
         # No decompo or all decompo failed
         return False

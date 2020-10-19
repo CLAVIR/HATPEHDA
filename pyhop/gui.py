@@ -18,7 +18,8 @@ def show_plan(agentss):
             while why is not None:
                 if (why.id, how.id) not in plotted_edge:
                     dot.node(str(why.id), why.name, shape="rectangle", style="filled", fillcolor=color_darker)
-                    dot.edge(str(why.id), str(how.id), color="#999999")
+                    dot.edge(str(why.id), str(how.id), color="#999999", label=str(how.decompo_number),
+                             fontcolor="#999999")
                     plotted_edge.add((why.id, how.id))
                 how = why
                 why = why.why

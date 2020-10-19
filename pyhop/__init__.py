@@ -457,6 +457,19 @@ def seek_plan(agents, agent_name, depth, verbose=0):
     if verbose > 2: print('depth {} returns failure'.format(depth))
     return False
 
+def multi_agent_plan():
+    sols = []
+    for ag in agents.values():
+        newtasks = []
+        for t in ag.tasks:
+            if t[0] in ag.operators:
+                operator = ag.operators[t[0]]
+                newtasks.append(Operator(t[0], t[1:], None, operator))
+            elif t[0] in ag.methods:
+                newtasks.append(AbstractTask())
+
+    seek_plan_robot(agents, "robot", sols)
+    return sols
 
 def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols):
     if agents[agent_name].tasks == []:

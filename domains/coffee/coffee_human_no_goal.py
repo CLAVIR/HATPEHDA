@@ -88,6 +88,9 @@ def robot_handover_take(agents: Dict[str, pyhop.Agent], self_state, self_name, a
     else:
         return False
 
+def robot_wait(agents, self_state, self_name):
+    return agents
+
 def human_handover_give(agents: Dict[str, pyhop.Agent], self_state, self_name, agent):
     if self_state.isCarrying[self_name] is not None and self_state.currentLocation[self_name] == self_state.currentLocation[agent]:
         return agents
@@ -127,7 +130,7 @@ def human_make_coffee(agents: Dict[str, pyhop.Agent], self_state, self_name, mug
 
 pyhop.declare_operators("human", human_handover_give, human_handover_end, human_handover_take, human_make_coffee)
 pyhop.declare_operators("robot", robot_pick_mug, robot_navigate, robot_ask_to_human_do_task, robot_handover_give,
-                        robot_handover_end, robot_handover_take)
+                        robot_handover_end, robot_handover_take, robot_wait)
 
 ### Methods definitions
 
@@ -146,7 +149,14 @@ def robot_get_coffee(agents, self_state, self_name, goal, mug):
 
 def robot_ask_to_fill_cup(agents, self_state, self_name, goal, mug, human):
     return [("robot_ask_to_human_do_task", human, ("human_get_mug_make_coffee", goal, self_name, mug)),
-            ("robot_handover_give", human), ("robot_handover_end",), ("robot_handover_take", human)]
+            ("robot_handover_give", human), ("robot_handover_end",), ("robot_wait_for_human", human), ("robot_handover_take", human)]
+
+def robot_wait_for_human(agents, self_state, self_name, human):
+    print(agents[human].plan)
+    if agents[human].plan[-1][0] != "human_handover_give":
+        return [("robot_wait",), ("robot_wait_for_human", human)]
+    else:
+        return []
 
 def human_get_mug_make_coffee(agents, self_state, self_name, goal, giver, mug):
     return [("human_handover_take", giver), ("human_make_coffee", mug), ("human_handover_give", giver), ("human_handover_end",)]
@@ -157,6 +167,7 @@ def human_get_mug_make_coffee(agents, self_state, self_name, goal, giver, mug):
 pyhop.declare_methods("human", "human_get_mug_make_coffee", human_get_mug_make_coffee)
 pyhop.declare_methods("robot", "robot_get_coffee", robot_get_coffee)
 pyhop.declare_methods("robot", "robot_ask_to_fill_cup", robot_ask_to_fill_cup)
+pyhop.declare_methods("robot", "robot_wait_for_human", robot_wait_for_human)
 
 pyhop.print_operators()
 
@@ -184,9 +195,25 @@ pyhop.add_tasks("robot", [("robot_get_coffee", goal1_r, "mug1")])
 
 pyhop.print_state(pyhop.agents["robot"].state)
 
-plans = pyhop.multi_agent_planning(verbose=0)
+# plans = pyhop.multi_agent_planning(verbose=0)
+#
+# for ags in pyhop.ma_solutions:
+#     print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
+#
+# print(plans)
 
-for ags in pyhop.ma_solutions:
-    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
+sol = []
+plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
 
 print(plans)
+
+print(len(sol), "solutions found")
+for agents in sol:
+    reconstituted_plan = [None] * (2*len(agents["robot"].plan))
+    reconstituted_plan[::2] = agents["robot"].plan
+    reconstituted_plan[1::2] = agents["human"].plan
+    for name, a in agents.items():
+        print(name, "plan:", a.plan)
+    print("complete plan:", reconstituted_plan)
+
+    print("######")

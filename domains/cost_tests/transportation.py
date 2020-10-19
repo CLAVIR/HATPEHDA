@@ -80,7 +80,18 @@ state1_h.dist = {"home": {"work": 1, "park": 0.5, "beach": 50}, "work": {"home":
 
 pyhop.set_state("robot", state1_h)
 pyhop.add_tasks("robot", [('travel', "home", "work")])
-plans = pyhop.multi_agent_planning()
-print(len(pyhop.ma_solutions), " plans found !")
-for ags in pyhop.ma_solutions:
-    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
+# plans = pyhop.multi_agent_planning()
+# print(len(pyhop.ma_solutions), " plans found !")
+# for ags in pyhop.ma_solutions:
+#     print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
+
+sol = []
+plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+
+print(plans)
+
+print(len(sol), "solutions found")
+for agents in sol:
+    for name, a in agents.items():
+        print(name, "plan:", a.plan)
+    print("######")

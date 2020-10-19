@@ -45,6 +45,9 @@ def human_stack(agents, self_state, self_name):
     else:
         return False
 
+def human_wait(agents, self_state, self_name):
+    return agents
+
 
 def robot_stack(agents, self_state, self_name):
     if self_state.isCarrying[self_name] is not None:
@@ -58,7 +61,7 @@ def robot_stack(agents, self_state, self_name):
         return False
 
 
-pyhop.declare_operators("human", human_pick, human_stack)
+pyhop.declare_operators("human", human_pick, human_stack, human_wait)
 pyhop.declare_operators("robot", robot_pick, robot_stack)
 
 ### Methods definitions
@@ -82,20 +85,29 @@ def stack_human(agents, self_state, self_name, goal):
                 return False
     return []
 
+def wait_uncoop_human(agents, self_state, self_name, goal):
+    for c in self_state.cubes:
+        if self_name in self_state.isReachableBy[c] and c in goal.isOnStack and goal.isOnStack[c] and not self_state.isOnStack[c]:
+            if c == next(x for x in goal.onStack if x not in self_state.onStack and self_name in self_state.isReachableBy[x]):
+                return [("human_wait", ), ("stack", goal)]
+            else:
+                return False
+    return []
+
 def stack_robot(agents, self_state, self_name, goal):
+    if goal.onStack == self_state.onStack:
+        return []
     for c in self_state.cubes:
         if self_name in self_state.isReachableBy[c] and c in goal.isOnStack and goal.isOnStack[c] and not self_state.isOnStack[c]:
             if c == next(x for x in goal.onStack if x not in self_state.onStack and self_name in self_state.isReachableBy[x]):
                 return [("move_one", c, goal), ("stack", goal)]
-            else:
-                return False
-    return []
+    return False
 
 
 
 pyhop.declare_methods("human", "move_one", moveb_m_human)
 pyhop.declare_methods("robot", "move_one", moveb_m_robot)
-pyhop.declare_methods("human", "stack", stack_human)
+pyhop.declare_methods("human", "stack", wait_uncoop_human, stack_human)
 pyhop.declare_methods("robot", "stack", stack_robot)
 
 pyhop.print_operators()
@@ -118,6 +130,7 @@ state1_h = pyhop.State("state1_h")
 state1_h.cubes = ["cube1", "cube2", "cube3", "cube4", "cube5", "cube6"]
 make_reachable_by(state1_h, state1_h.cubes[:3], ["human"])
 make_reachable_by(state1_h, state1_h.cubes[3:], ["robot"])
+make_reachable_by(state1_h, state1_h.cubes[0:1], ["human", "robot"])
 put_on_stack(state1_h, state1_h.cubes, False)
 state1_h.isCarrying = {"human": None, "robot": None}
 state1_h.onStack = []
@@ -134,17 +147,23 @@ pyhop.add_tasks("human", [('stack', goal1_h)])
 pyhop.set_state("robot", state1_r)
 pyhop.add_tasks("robot", [('stack', goal1_r)])
 
-#pyhop.print_state(pyhop.agents["human"].state)
+pyhop.print_state(pyhop.agents["human"].state)
 
 sol = []
 plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+
 
 print(plans)
 
 print(len(sol), "solutions found")
 for agents in sol:
+    reconstituted_plan = [None] * (2*len(agents["robot"].plan))
+    reconstituted_plan[::2] = agents["robot"].plan
+    reconstituted_plan[1::2] = agents["human"].plan
     for name, a in agents.items():
-        print(name, "plan:", a.plan)
+        print(name, "plan:", [("{} {}".format(o.why.id, o.why.name) if o.why is not None else None, o.name, *o.parameters) for o in a.plan])
+    print("complete plan:", reconstituted_plan)
+
     print("######")
 
 

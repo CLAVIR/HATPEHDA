@@ -125,9 +125,13 @@ pyhop.add_tasks("robot", [('stack', goal1_r)])
 
 pyhop.print_state(pyhop.agents["human"].state)
 
-plans = pyhop.multi_agent_planning(verbose=0)
-for ags in pyhop.ma_solutions:
-    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
-print(plans)
+sol = []
+plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+
+for agents in sol:
+    for name, a in agents.items():
+        print(name, "plan:", a.plan)
+    print("######")
+
 
 

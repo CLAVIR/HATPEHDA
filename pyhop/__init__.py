@@ -97,24 +97,50 @@ Pyhop provides the following classes and functions:
 
 from __future__ import print_function
 import copy, sys, pprint
+from typing import Dict
 
 ############################################################
 # States and goals
 from typing import Dict, Any
 
 from collections import namedtuple
+from enum import Enum
+
+class HumanPredictionType(Enum):
+    FIRST_APPLICABLE_ACTION = 0
+    ALL_APPLICABLE_ACTIONS = 1
+
+human_prediction_type = HumanPredictionType.ALL_APPLICABLE_ACTIONS
 
 Plan = namedtuple("Plan", ["plan", "cost"])
 
+class Task():
+    __ID = 0
+    def __init__(self, name, parameters, why, decompo_number):
+        self.id = Task.__ID
+        Task.__ID += 1
+        self.name = name
+        self.parameters = parameters
+        self.why = why  # From which task it is decomposed
+        self.decompo_number = decompo_number  # The number of the decomposition from the abstract task (self.why)
 
-class Action():
-    ID = 0
 
-    def __init__(self):
-        self.id = Action.ID
-        Action.ID += 1
-        self.action = None
+
+class Operator(Task):
+    def __init__(self, name, parameters, why, decompo_number, function):
+        super().__init__(name, parameters, why, decompo_number)
+        self.function = function
         self.cost = 0
+
+    def __repr__(self):
+        return str((self.name, *self.parameters))
+
+class AbstractTask(Task):
+    def __init__(self, name, parameters, why, decompo_number, how, number_of_decompo):
+        super().__init__(name, parameters, why, decompo_number)
+        self.how = how  # List of task networks this task has been decomposed into (after each decompo function has been called)
+        self.number_of_decompo = number_of_decompo  # How many decomposition this task has (maybe not successful ones)
+
 
 
 class State():
@@ -192,6 +218,8 @@ class Agent:
         self.triggers = []
         self.global_plan = []
         self.global_plan_cost = 0.0
+        self.currently_decomposed_task = None
+        self.currently_explored_decompo_number = None
 
 
 agents = {}  # type: Dict[str, Agent]
@@ -428,3 +456,167 @@ def seek_plan(agents, agent_name, depth, verbose=0):
         return [agents]
     if verbose > 2: print('depth {} returns failure'.format(depth))
     return False
+
+def multi_agent_plan():
+    sols = []
+    for ag in agents.values():
+        newtasks = []
+        for t in ag.tasks:
+            if t[0] in ag.operators:
+                operator = ag.operators[t[0]]
+                newtasks.append(Operator(t[0], t[1:], None, operator))
+            elif t[0] in ag.methods:
+                newtasks.append(AbstractTask())
+
+    seek_plan_robot(agents, "robot", sols)
+    return sols
+
+def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols):
+    if agents[agent_name].tasks == []:
+        sols.append(agents)
+        return True
+    task = agents[agent_name].tasks[0]
+    if task[0] in agents[agent_name].operators:
+        operator = agents[agent_name].operators[task[0]]
+        newagents = copy.deepcopy(agents)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
+        if result == False:
+            print(task[0], "not feasible for the robot")
+            return False
+        newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
+        newagents[agent_name].plan.append(
+            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task,
+                     newagents[agent_name].currently_explored_decompo_number, operator))
+        new_possible_agents = get_human_next_actions(newagents)
+        if new_possible_agents == False:
+            # No action is feasible for the human
+            print("No action feasible for the human")
+            return False
+        for ag in new_possible_agents:
+            seek_plan_robot(ag, agent_name, sols)
+        print("robot plan:", newagents["robot"].plan, "human plan:", newagents["human"].plan)
+        return True
+    if task[0] in agents[agent_name].methods:
+        decompos = agents[agent_name].methods[task[0]]
+        reachable_agents = []
+        decomposed_task = AbstractTask(task[0], task[1:], agents[agent_name].currently_decomposed_task,
+                                       agents[agent_name].currently_explored_decompo_number, [],
+                                       len(agents[agent_name].methods[task[0]]))
+        for i, decompo in enumerate(decompos):
+            newagents = copy.deepcopy(agents)
+            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
+            if subtasks != False:
+                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
+                decomposed_task.how.append(subtasks)
+                newagents[agent_name].currently_explored_decompo_number = i
+                newagents[agent_name].currently_decomposed_task = decomposed_task
+                reachable_agents.append(newagents)
+        if reachable_agents == []:
+            # No decomposition is achievable for this task
+            print("No decompo found for the robot for task:", task[0])
+            print("robot plan:", newagents["robot"].plan, "human plan:", newagents["human"].plan)
+            return False
+        else:
+            for ag in reachable_agents:
+                seek_plan_robot(ag, agent_name, sols)
+            return True
+    return False
+
+
+
+
+def get_human_next_actions(agents):
+    global human_prediction_type
+    if human_prediction_type == HumanPredictionType.FIRST_APPLICABLE_ACTION:
+        next_actions = get_first_applicable_action(agents, "human")
+        if next_actions == False:
+            newagents = copy.deepcopy(agents)
+            newagents["human"].plan.append(Operator("WAIT", [], None, None))  # Default action
+            return [newagents]
+        else:
+            return next_actions
+    elif human_prediction_type == HumanPredictionType.ALL_APPLICABLE_ACTIONS:
+        sols = []
+        result = get_all_applicable_actions(agents, "human", sols)
+        if result is False:
+            raise Exception("Error during human HTN exploration")
+        if sols == []:
+            newagents = copy.deepcopy(agents)
+            newagents["human"].plan.append(Operator("WAIT", [], None, None))  # Default action
+            return [newagents]
+        else:
+            return sols
+
+
+
+
+def get_all_applicable_actions(agents, agent_name, solutions):
+    if agents[agent_name].tasks == []:
+        newagents = copy.deepcopy(agents)
+        newagents[agent_name].plan.append(Operator("IDLE", [], newagents[agent_name].currently_decomposed_task,
+                                                   newagents[agent_name].currently_explored_decompo_number, None))
+        solutions.append(newagents)
+        return
+    task = agents[agent_name].tasks[0]
+    if task[0] in agents[agent_name].operators:
+        operator = agents[agent_name].operators[task[0]]
+        newagents = copy.deepcopy(agents)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
+        if result == False:
+            return
+        newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
+        newagents[agent_name].plan.append(
+            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task,
+                     newagents[agent_name].currently_explored_decompo_number, operator))
+        solutions.append(newagents)
+        return
+    if task[0] in agents[agent_name].methods:
+        decompos = agents[agent_name].methods[task[0]]
+        decomposed_task = AbstractTask(task[0], task[1:], agents[agent_name].currently_decomposed_task,
+                                       agents[agent_name].currently_explored_decompo_number, [],
+                                       len(agents[agent_name].methods[task[0]]))
+        for i, decompo in enumerate(decompos):
+            newagents = copy.deepcopy(agents)
+            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
+            if subtasks != False:
+                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
+                decomposed_task.how.append(subtasks)
+                newagents[agent_name].currently_explored_decompo_number = i
+                newagents[agent_name].currently_decomposed_task = decomposed_task
+                get_all_applicable_actions(newagents, agent_name, solutions)
+        return
+    return False
+
+
+def get_first_applicable_action(agents, agent_name):
+    if agents[agent_name].tasks == []:
+        newagents = copy.deepcopy(agents)
+        newagents[agent_name].plan.append(Operator("IDLE", [], None, None))  # Default action
+        return [newagents]
+    task = agents[agent_name].tasks[0]
+    if task[0] in agents[agent_name].operators:
+        operator = agents[agent_name].operators[task[0]]
+        newagents = copy.deepcopy(agents)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
+        if result == False:
+            return False
+        newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
+        newagents[agent_name].plan.append(
+            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task, operator))
+        return [newagents]
+    if task[0] in agents[agent_name].methods:
+        decompos = agents[agent_name].methods[task[0]]
+        decomposed_task = AbstractTask(task[0], task[1:], agents[agent_name].currently_decomposed_task, [])
+        for decompo in decompos:
+            newagents = copy.deepcopy(agents)
+            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
+            if subtasks != False:
+                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
+                decomposed_task.how.append(subtasks)
+                newagents[agent_name].currently_decomposed_task = decomposed_task
+                return get_first_applicable_action(newagents, agent_name)
+        # No decompo or all decompo failed
+        return False
+    return False
+
+

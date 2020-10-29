@@ -11,8 +11,9 @@ def show_plan(agentss):
         for i, a in enumerate(reconstituted_plan):
             color = "#AAAAFF" if i % 2 == 0 else "#FFFFAA"
             color_darker = "#5555CC" if i % 2 == 0 else "#CCCC55"
+            shape = "octagon" if a.name == "IDLE" else "ellipse"
             print(a.id, a.name)
-            dot.node(str(a.id), a.name, style="filled", fillcolor=color)
+            dot.node(str(a.id), a.name + "\n(" + ",".join(a.parameters) + ")", style="filled", fillcolor=color, shape=shape)
             why = a.why
             how = a
             while why is not None:

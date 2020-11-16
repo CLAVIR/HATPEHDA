@@ -15,6 +15,8 @@ from copy import deepcopy
 
 from pyhop.reg import REGHandler
 
+from pyhop.ros import RosNode
+
 import time
 
 
@@ -112,7 +114,7 @@ def retrieve_state_from_ontology(agent_name, state):
 
 ### Actions
 
-def robot_tell_human_to_tidy(agents: Dict[str, pyhop.Agent], self_state, self_name, human, cube):
+def robot_tell_human_to_tidy(agents, self_state, self_name, human, cube):
     if is_cube_pickable_by(self_state, human, cube):
         ctx = [("?0", "isOnTopOf", "table_1")]
         symbols = {"?0": cube}
@@ -124,14 +126,14 @@ def robot_tell_human_to_tidy(agents: Dict[str, pyhop.Agent], self_state, self_na
         return agents, cost
     return False
 
-def robot_wait_for_human_to_tidy(agents: Dict[str, pyhop.Agent], self_state, self_name, human, cube):
+def robot_wait_for_human_to_tidy(agents, self_state, self_name, human, cube):
     # Todo: Check if in goal box
     if self_state.isIn[cube] == [] and self_state.isHolding[human] == [] and self_state.isHeldBy[cube] == []:
         return agents, 0.
     return False
 
 
-def human_pick_cube(agents: Dict[str, pyhop.Agent], self_state, self_name, cube):
+def human_pick_cube(agents, self_state, self_name, cube):
     if is_cube_pickable_by(self_state, self_name, cube) and self_state.isHolding[self_name] == []:
         for a in agents.values():
             a.state.isIn[cube] = []
@@ -140,7 +142,7 @@ def human_pick_cube(agents: Dict[str, pyhop.Agent], self_state, self_name, cube)
         return agents, 1.
     return False
 
-def human_drop_cube(agents: Dict[str, pyhop.Agent], self_state, self_name):
+def human_drop_cube(agents, self_state, self_name):
     if len(self_state.isHolding[self_name]) == 1:
         for a in agents.values():
             cube = a.state.isHolding[self_name][0]
@@ -178,6 +180,34 @@ pyhop.declare_methods("human", "tidy", human_tidy)
 
 
 
+def on_new_plan_req(agents):
+    for ag, tasks in agents.items():
+        state = pyhop.State(ag + "_init")
+        state.types = {"Agent": ["isHolding"], "Cube": ["isIn", "isHeldBy"], "Box": [], "ReachableDtBox": [],
+                         "ReceiverReachableDtBox": [],
+                         "VisibleDtBox": [], "ReceiverVisibleDtBox": [], "DirectorVisibleDtBox": [],
+                         "DirectorReachableDtBox": [], "DtDirector": [], "DtReceiver": []}
+        # state_r = retrieve_state_from_ontology("robot", state_r)
+
+        state.individuals = {}
+        state.isHolding = {}
+        state.individuals["DtReceiver"] = ["human"]
+        state.isHolding["human"] = []
+
+        state_h = deepcopy(state)  # TODO: Retrieve it from the ontology
+        generate_tidy_all_orders(["cube_GBTG", "cube_BBTG", "cube_GBCG", "cube_GBTB"])
+        pyhop.set_state(ag, state)
+        pyhop.add_tasks(ag, [(t[0], *t[1]) for t in tasks])
+
+    pyhop.print_state(pyhop.agents["robot"].state)
+    print(pyhop.agents["robot"].tasks)
+    pyhop.print_methods("robot")
+    pyhop.print_methods("human")
+    sol = []
+    plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+    print(len(pyhop.ma_solutions))
+
+
 
 
 
@@ -185,35 +215,22 @@ pyhop.declare_methods("human", "tidy", human_tidy)
 
 if __name__ == "__main__":
 
-    regHandler = REGHandler()
+    #regHandler = REGHandler()
 
-    state_r = pyhop.State("robot_init")
-    state_r.types = {"Agent": ["isHolding"], "Cube": ["isIn", "isHeldBy"], "Box": [], "ReachableDtBox": [], "ReceiverReachableDtBox": [],
-                   "VisibleDtBox": [], "ReceiverVisibleDtBox": [], "DirectorVisibleDtBox": [],
-                   "DirectorReachableDtBox": [], "DtDirector": [], "DtReceiver": []}
-    state_r = retrieve_state_from_ontology("robot", state_r)
 
-    state_r.individuals["DtReceiver"] = ["human"]
-    state_r.isHolding["human"] = []
 
-    state_h = deepcopy(state_r)  # TODO: Retrieve it from the ontology
-    generate_tidy_all_orders(["cube_GBTG", "cube_BBTG", "cube_GBCG", "cube_GBTB"])
-    pyhop.set_state("human", state_h)
-    pyhop.set_state("robot", state_r)
-    pyhop.add_tasks("robot", [("tidy",)])
+    rosnode = RosNode.start_ros_node("planner", on_new_plan_req)
+    rosnode.wait_for_request()
 
-    pyhop.print_state(pyhop.agents["robot"].state)
-    pyhop.print_methods("robot")
-    pyhop.print_methods("human")
 
     start = time.time()
-    plans = pyhop.multi_agent_planning(verbose=0)
+    #plans = pyhop.multi_agent_planning(verbose=0)
     end = time.time()
-    print(len(pyhop.ma_solutions))
-    for ags in pyhop.ma_solutions:
-        print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
-    print("Took", end - start, "seconds")
+    #print(len(pyhop.ma_solutions))
+    #for ags in pyhop.ma_solutions:
+    #    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
+    #print("Took", end - start, "seconds")
 
-    regHandler.export_log("robot_planning")
-    regHandler.cleanup()
+    #regHandler.export_log("robot_planning")
+    #regHandler.cleanup()
 

@@ -1,4 +1,6 @@
 import pyhop
+from pyhop.ros import RosNode
+
 from copy import deepcopy
 
 from typing import Dict
@@ -7,6 +9,8 @@ from typing import Dict
 Simple domain where a robot and a human have 3 different numbered cube each. They must build a 3 block height stack with 
 a specific order. The order is such as the robot must place one cube, then the human and finally the robot again.
 Result:
+
+
 Plan : [('human_pick', 'cube1'), ('human_stack',), ('robot_pick', 'cube4'), ('robot_stack',), ('human_pick', 'cube2'), ('human_stack',)] with cost: 0.0
 """
 
@@ -151,9 +155,32 @@ pyhop.print_state(pyhop.agents["human"].state)
 
 sol = []
 plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+rosnode = None
 
+def on_new_plan_req(agents):
+    pyhop.reset_agents_tasks()
+    pyhop.set_state("robot", state1_r)
+    pyhop.set_state("human", state1_h)
+    for ag, tasks in agents.items():
+        pyhop.add_tasks(ag, [(t[0], *t[1]) for t in tasks])
+
+    pyhop.print_state(pyhop.agents["robot"].state)
+
+
+
+
+    print(pyhop.agents["robot"].tasks)
+    pyhop.print_methods("robot")
+    pyhop.print_methods("human")
+    sol = []
+    plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+    print(sol)
+    rosnode.send_plan(sol)
 
 print(plans)
+
+rosnode = RosNode.start_ros_node("planner", on_new_plan_req)
+rosnode.wait_for_request()
 
 print(len(sol), "solutions found")
 from pyhop import gui

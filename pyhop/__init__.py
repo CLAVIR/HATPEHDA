@@ -272,6 +272,10 @@ def declare_trigger(agent, trigger):
         agents[agent] = Agent(agent)
     agents[agent].triggers.append(trigger)
 
+def reset_agents_tasks():
+    for agent in agents:
+        agents[agent].tasks = []
+
 
 ############################################################
 # Commands to find out what the operators and methods are

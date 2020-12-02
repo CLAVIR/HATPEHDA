@@ -70,7 +70,7 @@ def add_agent_arg(agent_name, parameters_node):
 
 
 def generate_standard_domain(output_file, domain_name):
-    root = ET.Element("domains")
+    root = ET.Element("domain")
     root.set("name", domain_name)
     tree = ET.ElementTree(root)
     task_nodes = {}

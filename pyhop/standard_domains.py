@@ -58,10 +58,13 @@ def get_func_arguments(func):
             args.append((arg, args_types[arg]))
     return args
 
-def add_agent_arg(parameters_node):
+def add_agent_arg(agent_name, parameters_node):
     n = ET.Element("param")
     n.text = "agent"
-    n.set("type", "Agent")
+    if agent_name == "robot":
+        n.set("type", "Robot")
+    else:
+        n.set("type", "Human")
     parameters_node.append(n)
 
 
@@ -69,17 +72,25 @@ def add_agent_arg(parameters_node):
 def generate_standard_domain(output_file):
     root = ET.Element("domains")
     tree = ET.ElementTree(root)
+    task_nodes = {}
     for agent_name, agent in agents.items():
         for task in agent.methods:
-            task_node = ET.Element("task")
-            task_node.set("name", task)
+            if task not in task_nodes:
+                task_node = ET.Element("task")
+                task_node.set("name", task)
+                task_nodes[task] = task_node
+                decompos_node = ET.Element("decompositions")
+                root.append(task_node)
+                task_node.append(decompos_node)
+            task_node = task_nodes[task]
+            decompos_node = task_node[0]
+            decompo_number = len(decompos_node)
             print("methods of", task)
-            decompos_node = ET.Element("decompositions")
             for i, method in enumerate(agent.methods[task]):
                 sub_methods = get_return_lists(method)
                 args = get_func_arguments(method)
                 args_node = ET.Element("parameters")
-                add_agent_arg(args_node)
+                add_agent_arg(agent_name, args_node)
                 for arg in args:
                     n = ET.Element("param")
                     n.text = arg[0]
@@ -88,21 +99,19 @@ def generate_standard_domain(output_file):
                     args_node.append(n)
                 for j, m in enumerate(sub_methods):
                     method_node = ET.Element("decomposition")
-                    method_node.set("id", str(i))
+                    method_node.set("id", str(decompo_number + i))
                     method_node.append(args_node)
                     for t in m:
                         ref_task_node = ET.Element("task_ref")
                         ref_task_node.set("name", t)
                         method_node.append(ref_task_node)
                     decompos_node.append(method_node)
-            task_node.append(decompos_node)
-            root.append(task_node)
         for action in agent.operators:
             action_node = ET.Element("action")
             action_node.set("name", action)
             args = get_func_arguments(agent.operators[action])
             args_node = ET.Element("parameters")
-            add_agent_arg(args_node)
+            add_agent_arg(agent_name, args_node)
             for arg in args:
                 n = ET.Element("param")
                 n.text = arg[0]

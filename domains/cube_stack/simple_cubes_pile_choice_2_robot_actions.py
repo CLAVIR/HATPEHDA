@@ -142,7 +142,7 @@ def stack_human(agents, self_state, self_name, goal):
     @param self_name:
     @param goal:
     @return:
-    @ontology_type c: Cube
+    @ontology_type goal: Goal
     """
     if goal.onStack == self_state.onStack:
         return []

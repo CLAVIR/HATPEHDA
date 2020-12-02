@@ -238,7 +238,7 @@ sol = []
 plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
 rosnode = None
 
-generate_standard_domain("plop.xml")
+generate_standard_domain("plop.xml", "simple_cube_pile")
 
 def on_new_plan_req(agents):
     pyhop.reset_agents_tasks()

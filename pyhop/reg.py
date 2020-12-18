@@ -8,10 +8,10 @@ from knowledge_sharing_planner_msgs.msg import Triplet, SymbolTable
 
 class REGHandler:
     def __init__(self):
-        rospy.init_node("task_planner_reg")
         self.planning_ontologies_commit = {}
         self.ontos = OntologiesManipulator()
         self.ontos.waitInit()
+        print("RegHandler Ready!")
 
     def cleanup(self):
         for agent in self.planning_ontologies_commit.keys():
@@ -27,6 +27,7 @@ class REGHandler:
         for s, i in symbols.items():
             disambiguation_req.symbol_table.symbols.append(s)
             disambiguation_req.symbol_table.individuals.append(i)
+        disambiguation_req.replan = False
         #print(disambiguation_req.baseFacts)
         disambiguate_srv = rospy.ServiceProxy('/KSP/disambiguate', Disambiguation)
         resp1 = disambiguate_srv(disambiguation_req)
@@ -47,7 +48,6 @@ class REGHandler:
         commit = onto.feeder.commitAuto()
 
     def get_planning_ontology(self, agent_name, state):
-        global planning_ontologies_commit
         if agent_name not in self.planning_ontologies_commit:
             self.create_planning_ontology(agent_name, state)
         onto = self.ontos.get(agent_name + "_planning")

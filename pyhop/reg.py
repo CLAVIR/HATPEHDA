@@ -60,6 +60,10 @@ class REGHandler:
         planning_name = agent_name + "_planning"
         self.ontos.copy(planning_name, agent_name)
         planning_onto = self.ontos.get(planning_name)
+        if planning_onto is None:
+            print("""Could not create planning ontology with name '{dst}' by making a copy of '{src}'.
+                  Ensure that that ontology '{src}' exists and '{dst}' does not.""".format(dst=planning_name, src=agent_name))
+            return
         planning_onto.close()
         planning_onto.feeder.waitConnected()
         for type, entities in state.individuals.items():

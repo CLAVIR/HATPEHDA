@@ -84,9 +84,17 @@ class RosNode:
                         if why.id not in existing_tasks:
                             task = Task()
                             task.id = why.id
+                            task.type = task.ABSTRACT_TASK
                             task.name = why.name
+                            task.parameters = []
+                            for param in why.parameters:
+                                if isinstance(param, Goal):
+                                    task.parameters.append("goal_{}".format(param.__name__))
+                                else:
+                                    task.parameters.append(param)
                             task.parameters = why.parameters
                             task.agent = how.agent  # TODO: change it...
+                            task.agent = why.agent
                             task.successors = []
                             existing_tasks[why.id] = task
                             msg.tasks.append(task)
@@ -95,6 +103,9 @@ class RosNode:
                         why_task.decomposed_into.append(how.id)
                         how_task.decomposition_of = why.id
                         how_task.decomposition_number = how.decompo_number
+                        existing_edges.add((why.id, how.id))
+                    how = why
+                    why = why.why
                         existing_edges.append(why.id, how.id)
                         how = why
                         why = why.why

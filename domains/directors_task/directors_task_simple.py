@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import pyhop
 
@@ -146,12 +146,12 @@ def robot_tell_human_to_tidy(agents, self_state, self_name, human, cube, box):
         ctx = [("?0", "isAbove", "table_1")]
         symbols = {"?0": cube}
         reg = regHandler.get_re(human, agents[human].state, ctx, symbols, cube)
-        # reg = regHandler.get_re(self_name, self_state, ctx, symbols, cube)
         if not reg.success:
-            return False
+           return False
         cost = len(reg.sparqlResult)
+        cost = 1
         print("Cube", cube, "costs", cost, "to disambiguate")
-        agents[human].tasks.insert(0, ("tidy", cube, box))
+        pyhop.add_tasks(human, [("tidy", cube, box)], agents)
         return agents
     else:
         print("cube", cube, "is not reachable by", human)
@@ -165,6 +165,19 @@ def robot_wait_for_human_to_tidy(agents, self_state, self_name):
     @param self_state:
     @param self_name:
     @return:
+    @semantic_name: wait
+    """
+    return agents
+
+def robot_congratulate(agents, self_state, self_name, human):
+    """
+
+    @param agents:
+    @param self_state:
+    @param self_name:
+    @param human:
+    @return:
+    @semantic_name: congratulate
     """
     return agents
 
@@ -200,7 +213,7 @@ def human_drop_cube(agents, self_state, self_name, box):
 
 
 # As we don't know the agents name in advance, we store the operators here, until a ros plan call
-ctrl_operators = [robot_tell_human_to_tidy, robot_wait_for_human_to_tidy]
+ctrl_operators = [robot_tell_human_to_tidy, robot_wait_for_human_to_tidy, robot_congratulate]
 unctrl_operators = [human_pick_cube, human_drop_cube]
 
 
@@ -260,8 +273,11 @@ def robot_tidy(agents, self_state, self_name, goal):
     if cubes_boxes_cost == []:
         return []
     cubes_boxes_cost = sorted(cubes_boxes_cost, key=lambda x: x[2])
-    print(cubes_boxes_cost)
-    return [('tidy_one', cubes_boxes_cost[0][0], cubes_boxes_cost[0][1], human), ("tidy_cubes", goal)]
+    for t in agents[self_name].tasks:
+        print("Task: ", t.name, t.parameters)
+        if t.name == "robot_congratulate" and t.parameters == (human,):
+            return [('tidy_one', cubes_boxes_cost[0][0], cubes_boxes_cost[0][1], human), ("tidy_cubes", goal)]
+    return [('tidy_one', cubes_boxes_cost[0][0], cubes_boxes_cost[0][1], human), ("tidy_cubes", goal), ("robot_congratulate", human)]
 
 
 def human_tidy(agents, self_state, self_name, cube, box):
@@ -297,7 +313,7 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
 
             # TODO: remove
             state_filled.individuals["DtReceiver"] = ["human_0"]
-            state_filled.isHolding[next(iter(unctrl_agent))] = []
+            state_filled.isHolding = {next(iter(unctrl_agent)): []}
             state_filled.isReachableBy = {c: [next(iter(unctrl_agent))] for c in state_filled.individuals["DtCube"]}
 
             pyhop.declare_operators(ag, *operators)
@@ -323,6 +339,7 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     gui.show_plan(sol, next(iter(ctrl_agents)), next(iter(unctrl_agent)))
     print(sol)
     rosnode.send_plan(sol, next(iter(ctrl_agents)), next(iter(unctrl_agent)))
+    regHandler.cleanup()
 
 
 if __name__ == "__main__":

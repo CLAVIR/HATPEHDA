@@ -92,8 +92,6 @@ class RosNode:
                                     task.parameters.append("goal_{}".format(param.__name__))
                                 else:
                                     task.parameters.append(param)
-                            task.parameters = why.parameters
-                            task.agent = how.agent  # TODO: change it...
                             task.agent = why.agent
                             task.successors = []
                             existing_tasks[why.id] = task
@@ -106,9 +104,6 @@ class RosNode:
                         existing_edges.add((why.id, how.id))
                     how = why
                     why = why.why
-                        existing_edges.append(why.id, how.id)
-                        how = why
-                        why = why.why
         self.plan_pub.publish(msg)
 
 

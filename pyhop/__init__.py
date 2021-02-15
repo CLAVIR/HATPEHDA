@@ -267,11 +267,19 @@ def set_goal(agent, goal):
     agents[agent].goal = goal
 
 
-def add_tasks(agent, tasks):
-    if agent not in agents:
-        agents[agent] = Agent(agent)
-    agents[agent].tasks.extend(tasks)
-
+def add_tasks(agent, tasks, to_agents=None):
+    if to_agents is None:
+        to_agents = agents
+    if agent not in to_agents:
+        to_agents[agent] = Agent(agent)
+    for t in tasks:
+        if t[0] in to_agents[agent].operators:
+            to_agents[agent].tasks.append(Operator(t[0], t[1:], agent, None, None, to_agents[agent].operators[t[0]]))
+        elif t[0] in to_agents[agent].methods:
+            to_agents[agent].tasks.append(AbstractTask(t[0], t[1:], agent, None, None, [], len(to_agents[agent].methods[t[0]])))
+        else:
+            raise TypeError("Asked to add task '{}' to agent '{}' but it is not defined "
+                            "neither in its operators nor methods.".format(t[0], agent))
 
 def declare_trigger(agent, trigger):
     if agent not in agents:
@@ -490,25 +498,23 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
         sols.append(agents)
         return True
     task = agents[agent_name].tasks[0]
-    if task[0] in agents[agent_name].operators:
-        operator = agents[agent_name].operators[task[0]]
+    if task.name in agents[agent_name].operators:
+        operator = agents[agent_name].operators[task.name]
         newagents = copy.deepcopy(agents)
-        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
         if result == False:
-            na_op = Operator(task[0], task[1:], agent_name, newagents[agent_name].currently_decomposed_task,
-                         newagents[agent_name].currently_explored_decompo_number, operator)
-            na_op.applicable = False
-            if len(newagents[uncontrollable_agent_name].plan) > 0:
-                na_op.previous = newagents[uncontrollable_agent_name].plan[-1]
-            print(task[0], "not feasible for the robot")
-            print(task)
-            newagents[agent_name].non_applicable_tasks.append(na_op)
-            fails.append(newagents)
+            #na_op = Operator(task[0], task[1:], agent_name, newagents[agent_name].currently_decomposed_task,
+            #             newagents[agent_name].currently_explored_decompo_number, operator)
+            #na_op.applicable = False
+            #if len(newagents[uncontrollable_agent_name].plan) > 0:
+            #    na_op.previous = newagents[uncontrollable_agent_name].plan[-1]
+            #print(task[0], "not feasible for the robot")
+            #print(task)
+            #newagents[agent_name].non_applicable_tasks.append(na_op)
+            #fails.append(newagents)
             return False
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
-        newagents[agent_name].plan.append(
-            Operator(task[0], task[1:], agent_name, newagents[agent_name].currently_decomposed_task,
-                     newagents[agent_name].currently_explored_decompo_number, operator))
+        newagents[agent_name].plan.append(task)
         new_possible_agents = get_human_next_actions(newagents, uncontrollable_agent_name)
         if new_possible_agents == False:
             # No action is feasible for the human
@@ -518,28 +524,40 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
             seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails)
         print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
         return True
-    if task[0] in agents[agent_name].methods:
-        decompos = agents[agent_name].methods[task[0]]
+    if task.name in agents[agent_name].methods:
+        decompos = agents[agent_name].methods[task.name]
         reachable_agents = []
-        decomposed_task = AbstractTask(task[0], task[1:], agent_name, agents[agent_name].currently_decomposed_task,
-                                       agents[agent_name].currently_explored_decompo_number, [],
-                                       len(agents[agent_name].methods[task[0]]))
+#        decomposed_task = AbstractTask(task[0], task[1:], agent_name, agents[agent_name].currently_decomposed_task,
+#                                       agents[agent_name].currently_explored_decompo_number, [],
+#                                       len(agents[agent_name].methods[task[0]]))
         for i, decompo in enumerate(decompos):
             newagents = copy.deepcopy(agents)
-            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
+            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task.parameters)
             if subtasks is None:
-                print()
                 raise TypeError(
-                    "Error: the decomposition function: {} of task {} has returned None. It should return a list or False.".format(decompo.__name__,  task[0]))
+                    "Error: the decomposition function: {} of task {} has returned None. It should return a list or False.".format(decompo.__name__,  task.name))
             if subtasks != False:
-                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
-                decomposed_task.how.append(subtasks)
-                newagents[agent_name].currently_explored_decompo_number = i
-                newagents[agent_name].currently_decomposed_task = decomposed_task
+                subtasks_obj = []
+                for sub in subtasks:
+                    if sub[0] in agents[agent_name].methods:
+                        subtasks_obj.append(AbstractTask(sub[0], sub[1:], agent_name, task, i, [], len(agents[agent_name].methods[sub[0]])))
+                    elif sub[0] in agents[agent_name].operators:
+                        subtasks_obj.append(Operator(sub[0], sub[1:], agent_name, task, i, agents[agent_name].operators[sub[0]]))
+                    else:
+                        raise TypeError(
+                            "Error: the decomposition function '{}' of task '{}' "
+                            "returned a subtask '{}' which is neither in the methods nor in the operators "
+                            "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
+                        )
+
+                newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
+                #decomposed_task.how.append(subtasks)
+                #newagents[agent_name].currently_explored_decompo_number = i
+                #newagents[agent_name].currently_decomposed_task = decomposed_task
                 reachable_agents.append(newagents)
         if reachable_agents == []:
             # No decomposition is achievable for this task
-            print("No decompo found for the robot for task:", task[0])
+            print("No decompo found for the robot for task:", task.name)
             print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
             print_state(newagents[agent_name].state)
             return False
@@ -585,34 +603,44 @@ def get_all_applicable_actions(agents, agent_name, solutions):
         solutions.append(newagents)
         return
     task = agents[agent_name].tasks[0]
-    if task[0] in agents[agent_name].operators:
-        operator = agents[agent_name].operators[task[0]]
+    if task.name in agents[agent_name].operators:
+        operator = agents[agent_name].operators[task.name]
         newagents = copy.deepcopy(agents)
-        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
         if result == False:
             return
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
-        newagents[agent_name].plan.append(
-            Operator(task[0], task[1:], agent_name, newagents[agent_name].currently_decomposed_task,
-                     newagents[agent_name].currently_explored_decompo_number, operator))
+        newagents[agent_name].plan.append(task)
         solutions.append(newagents)
         return
-    if task[0] in agents[agent_name].methods:
-        decompos = agents[agent_name].methods[task[0]]
-        decomposed_task = AbstractTask(task[0], task[1:], agent_name, agents[agent_name].currently_decomposed_task,
-                                       agents[agent_name].currently_explored_decompo_number, [],
-                                       len(agents[agent_name].methods[task[0]]))
+    if task.name in agents[agent_name].methods:
+        decompos = agents[agent_name].methods[task.name]
+        #decomposed_task = AbstractTask(task[0], task[1:], agent_name, agents[agent_name].currently_decomposed_task,
+        #                               agents[agent_name].currently_explored_decompo_number, [],
+        #                               len(agents[agent_name].methods[task[0]]))
         for i, decompo in enumerate(decompos):
             newagents = copy.deepcopy(agents)
-            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
+            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task.parameters)
             if subtasks != False:
-                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
-                decomposed_task.how.append(subtasks)
-                newagents[agent_name].currently_explored_decompo_number = i
-                newagents[agent_name].currently_decomposed_task = decomposed_task
+                subtasks_obj = []
+                for sub in subtasks:
+                    if sub[0] in agents[agent_name].methods:
+                        subtasks_obj.append(AbstractTask(sub[0], sub[1:], agent_name, task, i, [], len(agents[agent_name].methods[sub[0]])))
+                    elif sub[0] in agents[agent_name].operators:
+                        subtasks_obj.append(Operator(sub[0], sub[1:], agent_name, task, i, agents[agent_name].operators[sub[0]]))
+                    else:
+                        raise TypeError(
+                            "Error: the decomposition function '{}' of task '{}' "
+                            "returned a subtask '{}' which is neither in the methods nor in the operators "
+                            "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
+                        )
+                newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
+                #decomposed_task.how.append(subtasks)
+                #newagents[agent_name].currently_explored_decompo_number = i
+                #newagents[agent_name].currently_decomposed_task = decomposed_task
                 get_all_applicable_actions(newagents, agent_name, solutions)
         return
-    print("looking for:", task[0], "not a task nor an action of agent", agent_name)
+    print("looking for:", task.name, "not a task nor an action of agent", agent_name)
     return False
 
 

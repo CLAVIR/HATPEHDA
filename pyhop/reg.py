@@ -16,6 +16,7 @@ class REGHandler:
     def cleanup(self):
         for agent in self.planning_ontologies_commit.keys():
             self.ontos.delete(agent+"_planning")
+        self.planning_ontologies_commit = {}
 
     def get_re(self, agent_name, state, context, symbols, target):
         self.update_world(agent_name, state)

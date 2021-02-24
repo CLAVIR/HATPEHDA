@@ -598,8 +598,7 @@ def get_human_next_actions(agents, agent_name):
 def get_all_applicable_actions(agents, agent_name, solutions):
     if agents[agent_name].tasks == []:
         newagents = copy.deepcopy(agents)
-        newagents[agent_name].plan.append(Operator("IDLE", [], agent_name, newagents[agent_name].currently_decomposed_task,
-                                                   newagents[agent_name].currently_explored_decompo_number, None))
+        newagents[agent_name].plan.append(Operator("IDLE", [], agent_name, None, 0, None))
         solutions.append(newagents)
         return
     task = agents[agent_name].tasks[0]

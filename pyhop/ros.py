@@ -71,6 +71,8 @@ class RosNode:
                     task.agent = a.agent
                     task.successors = []
                     existing_tasks[a.id] = task
+                    if a.why is None:
+                        task.decomposition_of = -1
                     msg.tasks.append(task)
                 task = existing_tasks[a.id]
                 if i < len(reconstituted_plan) - 1:
@@ -93,6 +95,8 @@ class RosNode:
                                 else:
                                     task.parameters.append(param)
                             task.agent = why.agent
+                            if why.why is None:
+                                task.decomposition_of = -1
                             task.successors = []
                             existing_tasks[why.id] = task
                             msg.tasks.append(task)

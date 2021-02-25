@@ -50,6 +50,18 @@ class RosNode:
     def wait_for_request(self):
         rospy.spin()
 
+    def create_primitive_task(self, action):
+        task = Task()
+        task.id = action.id
+        task.type = task.PRIMITIVE_TASK
+        task.name = action.name
+        task.parameters = action.parameters
+        task.agent = action.agent
+        task.successors = []
+        if action.why is None:
+            task.decomposition_of = -1
+        return task
+
     def send_plan(self, agentss, ctrlable_name, unctrlable_name):
         print(ctrlable_name)
         print(unctrlable_name)
@@ -58,42 +70,37 @@ class RosNode:
         msg = Plan()
         msg.tasks = []
         for agents in agentss:
-            reconstituted_plan = [None] * (2 * len(agents[ctrlable_name].plan))
-            reconstituted_plan[::2] = agents[ctrlable_name].plan
-            reconstituted_plan[1::2] = agents[unctrlable_name].plan  # TODO: change it...
-            for i, a in enumerate(reconstituted_plan):
-                if a.id not in existing_tasks:
-                    task = Task()
-                    task.id = a.id
-                    task.type = task.PRIMITIVE_TASK
-                    task.name = a.name
-                    task.parameters = a.parameters
-                    task.agent = a.agent
-                    task.successors = []
-                    existing_tasks[a.id] = task
-                    if a.why is None:
-                        task.decomposition_of = -1
+            action = agents[unctrlable_name].plan[-1]
+            while action is not None:
+                if action.id not in existing_tasks:
+                    task = self.create_primitive_task(action)
                     msg.tasks.append(task)
-                task = existing_tasks[a.id]
-                if i < len(reconstituted_plan) - 1:
-                    task.successors.append(reconstituted_plan[i+1].id)
-                if i > 0:
-                    task.predecessors.append(reconstituted_plan[i-1].id)
-                why = a.why
-                how = a
+                    existing_tasks[action.id] = task
+                task = existing_tasks[action.id]
+                if action.previous is not None:
+                    task.predecessors.append(action.previous.id)
+                if action.next is not None:
+                    for n in action.next:
+                        task.successors.append(n.id)
+                why = action.why
+                how = action
                 while why is not None:
+                    print("Checking", why, how)
                     if (why.id, how.id) not in existing_edges:
                         if why.id not in existing_tasks:
+                            #print("adding", why.id, how.id)
                             task = Task()
                             task.id = why.id
                             task.type = task.ABSTRACT_TASK
                             task.name = why.name
                             task.parameters = []
                             for param in why.parameters:
+                                #print("Parameter", param)
                                 if isinstance(param, Goal):
                                     task.parameters.append("goal_{}".format(param.__name__))
                                 else:
                                     task.parameters.append(param)
+                            #print(task.parameters)
                             task.agent = why.agent
                             if why.why is None:
                                 task.decomposition_of = -1
@@ -108,6 +115,9 @@ class RosNode:
                         existing_edges.add((why.id, how.id))
                     how = why
                     why = why.why
+                action = action.previous
+
+        print("send plan")
         self.plan_pub.publish(msg)
 
 

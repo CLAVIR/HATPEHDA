@@ -126,8 +126,11 @@ class Task():
         self.decompo_number = decompo_number  # The number of the decomposition from the abstract task (self.why)
         self.applicable = True
         self.previous = None
+        self.next = None
 
-
+    def assign_next_id(self):
+        self.id = Task.__ID
+        Task.__ID += 1
 
 
 class Operator(Task):
@@ -135,6 +138,13 @@ class Operator(Task):
         super().__init__(name, parameters, why, decompo_number, agent)
         self.function = function
         self.cost = 0
+
+    @staticmethod
+    def copy_new_id(other):
+        new = copy.deepcopy(other)
+        new.assign_next_id()
+        return new
+
 
 
     def __repr__(self):
@@ -219,13 +229,7 @@ class Agent:
         self.goal = None
         self.tasks = []
         self.plan = []
-        self.plan_cost = 0.0
         self.triggers = []
-        self.global_plan = []
-        self.global_plan_cost = 0.0
-        self.currently_decomposed_task = None
-        self.currently_explored_decompo_number = None
-        self.non_applicable_tasks = []
 
 
 agents = {}  # type: Dict[str, Agent]
@@ -336,164 +340,9 @@ def fixed_cost(cost):
 ############################################################
 # The actual planner
 
-ma_solutions = []
-min_cost = 9999999
-
-
-def multi_agent_planning(verbose=0):
-    global ma_solutions
-    ma_solutions = []
-    ag = plan_step(agents, list(agents.keys()), verbose)
-    #print(ag["robot"].global_plan, "with value:", ag["robot"].global_plan_cost)
-    return {a.name: a.plan for a in ag.values()} if ag != False else False
-
-
-def plan_step(agents, agents_order, verbose=0):
-    global min_cost, ma_solutions
-    if all(a.tasks == [] for a in agents.values()):
-        print("A multi agent solution has been found")
-        ma_solutions.append(agents)
-        #print(agents["robot"].global_plan_cost, min_cost)
-        if agents["robot"].global_plan_cost < min_cost:
-            min_cost = agents["robot"].global_plan_cost
-        return agents
-
-    ag_i = next(i for i in range(len(agents_order)) if agents[agents_order[i]].tasks != [])
-    name = agents[agents_order[ag_i]].name
-    new_agents_order = agents_order[:]
-    new_agents_order.append(new_agents_order.pop(ag_i))
-
-    newagents = pyhop(agents, name, verbose)
-    if newagents != False:
-        sol = False
-        # print(newagents)
-        for na in newagents:
-            if na["robot"].global_plan_cost > min_cost:
-                #pass
-                continue
-            #print(na["robot"].tasks)
-            sol = plan_step(copy.deepcopy(na), new_agents_order, verbose)
-        return sol
-    else:
-        return plan_step(copy.deepcopy(agents), new_agents_order, verbose)
-
-
-def pyhop(agents, agent_name, verbose=0):
-    """
-    Try to find a plan that accomplishes tasks in state.
-    If successful, return the plan. Otherwise return False.
-    """
-    if agent_name not in agents:
-        print("Agent is not declared!")
-        return
-    if verbose > 0: print(
-        '** pyhop, verbose={}: **\n   agent = {}\n   state = {}\n   tasks = {}'.format(verbose, agent_name, agents[
-            agent_name].state.__name__, agents[agent_name].tasks))
-    result = seek_plan(agents, agent_name, 0, verbose)
-    if verbose > 0: print('** result =', result, '\n')
-    return result
-
-
-agent_valid_plans = []
-
-
-def seek_plan(agents, agent_name, depth, verbose=0):
-    """
-    Workhorse for pyhop. state and tasks are as in pyhop.
-    - plan is the current partial plan.
-    - depth is the recursion depth, for use in debugging
-    - verbose is whether to print debugging messages
-    """
-    global agent_valid_plans, min_sub_cost
-    if verbose > 1: print('depth {} tasks {}'.format(depth, agents[agent_name].tasks))
-    if agents[agent_name].tasks == []:
-        if verbose > 2: print('depth {} returns plan {}'.format(depth, agents[agent_name].plan))
-        agent_valid_plans.append(agents)
-        return [agents]
-    task1 = agents[agent_name].tasks[0]
-    if task1[0] in agents[agent_name].operators:
-        if verbose > 2: print('depth {} action {}'.format(depth, task1))
-        operator = agents[agent_name].operators[task1[0]]
-        newagents = copy.deepcopy(agents)
-        tmp = operator(newagents, newagents[agent_name].state, agent_name, *task1[1:])
-        cost = 0.0
-        if isinstance(tmp, tuple):
-            newagents, cost = tmp
-        else:
-            if tmp is not None and tmp is not False:
-                print(
-                    "Warning action {} has been sucessfully used, but no cost has been defined, assuming cost is 0".format(
-                        task1[0]))
-                newagents = tmp
-                cost = 0.0
-            else:
-                return False
-        if verbose > 2:
-            print('depth {} new self state:'.format(depth))
-            if newagents:
-                print_state(newagents[agent_name].state)
-            else:
-                print("False")
-        if newagents:
-            newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
-            newagents[agent_name].plan = newagents[agent_name].plan + [task1]
-            newagents[agent_name].plan_cost += cost
-            newagents["robot"].global_plan = newagents["robot"].global_plan + [task1]
-            newagents["robot"].global_plan_cost += cost
-            # Check the triggers for any task to do
-            for a in agents.keys():
-                for t in newagents[a].triggers:
-                    triggered = t(newagents, newagents[a].state, agent_name)
-                    print(triggered)
-                    if triggered != False:
-                        newagents[a].tasks = triggered + newagents[a].tasks
-                        print("new trigger: ", a, triggered)
-                        break
-            solution = seek_plan(newagents, agent_name, depth + 1, verbose)
-            if solution != False:
-                return solution
-            elif depth > 0:
-                return [newagents]
-    solutions = []
-    if task1[0] in agents[agent_name].methods:
-        if verbose > 2: print('depth {} method instance {}'.format(depth, task1))
-        relevant = agents[agent_name].methods[task1[0]]
-        for method in relevant:
-            newagents = copy.deepcopy(agents)
-            subtasks = method(list(newagents.values()), newagents[agent_name].state, agent_name, *task1[1:])
-            # Can't just say "if subtasks:", because that's wrong if subtasks == []
-            if verbose > 2:
-                print('depth {} new tasks: {}'.format(depth, subtasks))
-            if subtasks != False:
-                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
-                sol = seek_plan(newagents, agent_name, depth + 1, verbose)
-                if sol != False:
-                    solutions += sol
-    if len(solutions) > 0:
-        return solutions
-    elif depth > 0:
-        # If nothing is applicable but we have made some progress return the new states of agents
-        if verbose > 1:
-            print("depth {} returns failure, but with progress. Continuing...".format(depth))
-        return [agents]
-    if verbose > 2: print('depth {} returns failure'.format(depth))
-    return False
-
-def multi_agent_plan():
-    sols = []
-    for ag in agents.values():
-        newtasks = []
-        for t in ag.tasks:
-            if t[0] in ag.operators:
-                operator = ag.operators[t[0]]
-                newtasks.append(Operator(t[0], t[1:], None, operator))
-            elif t[0] in ag.methods:
-                newtasks.append(AbstractTask())
-
-    seek_plan_robot(agents, "robot", sols)
-    return sols
-
-def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails = []):
+def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
+    if fails is None:
+        fails = []
     if agents[agent_name].tasks == []:
         sols.append(agents)
         return True
@@ -503,33 +352,23 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
         newagents = copy.deepcopy(agents)
         result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
         if result == False:
-            #na_op = Operator(task[0], task[1:], agent_name, newagents[agent_name].currently_decomposed_task,
-            #             newagents[agent_name].currently_explored_decompo_number, operator)
-            #na_op.applicable = False
-            #if len(newagents[uncontrollable_agent_name].plan) > 0:
-            #    na_op.previous = newagents[uncontrollable_agent_name].plan[-1]
-            #print(task[0], "not feasible for the robot")
-            #print(task)
-            #newagents[agent_name].non_applicable_tasks.append(na_op)
-            #fails.append(newagents)
             return False
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
-        newagents[agent_name].plan.append(task)
-        new_possible_agents = get_human_next_actions(newagents, uncontrollable_agent_name)
+        action = Operator.copy_new_id(task)
+        action.previous = previous_action
+        newagents[agent_name].plan.append(action)
+        new_possible_agents = get_human_next_actions(newagents, uncontrollable_agent_name, previous_action=action)
         if new_possible_agents == False:
             # No action is feasible for the human
             print("No action feasible for the human")
             return False
         for ag in new_possible_agents:
-            seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails)
+            seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action=ag[uncontrollable_agent_name].plan[-1])
         print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
         return True
     if task.name in agents[agent_name].methods:
         decompos = agents[agent_name].methods[task.name]
         reachable_agents = []
-#        decomposed_task = AbstractTask(task[0], task[1:], agent_name, agents[agent_name].currently_decomposed_task,
-#                                       agents[agent_name].currently_explored_decompo_number, [],
-#                                       len(agents[agent_name].methods[task[0]]))
         for i, decompo in enumerate(decompos):
             newagents = copy.deepcopy(agents)
             subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task.parameters)
@@ -551,9 +390,6 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
                         )
 
                 newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
-                #decomposed_task.how.append(subtasks)
-                #newagents[agent_name].currently_explored_decompo_number = i
-                #newagents[agent_name].currently_decomposed_task = decomposed_task
                 reachable_agents.append(newagents)
         if reachable_agents == []:
             # No decomposition is achievable for this task
@@ -563,26 +399,27 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
             return False
         else:
             for ag in reachable_agents:
-                seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails)
+                seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
             return True
     return False
 
 
 
 
-def get_human_next_actions(agents, agent_name):
+def get_human_next_actions(agents, agent_name, previous_action):
     global human_prediction_type
     if human_prediction_type == HumanPredictionType.FIRST_APPLICABLE_ACTION:
-        next_actions = get_first_applicable_action(agents, agent_name)
-        if next_actions == False:
+        sols = []
+        next_actions = get_first_applicable_action(agents, agent_name, sols)
+        if next_actions is False:
             newagents = copy.deepcopy(agents)
             newagents[agent_name].plan.append(Operator("WAIT", [], agent_name,  None, 0, None))  # Default action
             return [newagents]
         else:
-            return next_actions
+            return sols
     elif human_prediction_type == HumanPredictionType.ALL_APPLICABLE_ACTIONS:
         sols = []
-        result = get_all_applicable_actions(agents, agent_name, sols)
+        result = get_all_applicable_actions(agents, agent_name, sols, previous_action=previous_action)
         if result is False:
             raise Exception("Error during human HTN exploration")
         if sols == []:
@@ -595,10 +432,12 @@ def get_human_next_actions(agents, agent_name):
 
 
 
-def get_all_applicable_actions(agents, agent_name, solutions):
+def get_all_applicable_actions(agents, agent_name, solutions, previous_action):
     if agents[agent_name].tasks == []:
         newagents = copy.deepcopy(agents)
-        newagents[agent_name].plan.append(Operator("IDLE", [], agent_name, None, 0, None))
+        idle = Operator("IDLE", [], agent_name, None, 0, None)
+        idle.previous = previous_action
+        newagents[agent_name].plan.append(idle)
         solutions.append(newagents)
         return
     task = agents[agent_name].tasks[0]
@@ -609,14 +448,13 @@ def get_all_applicable_actions(agents, agent_name, solutions):
         if result == False:
             return
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
-        newagents[agent_name].plan.append(task)
+        action = Operator.copy_new_id(task)
+        action.previous = previous_action
+        newagents[agent_name].plan.append(action)
         solutions.append(newagents)
         return
     if task.name in agents[agent_name].methods:
         decompos = agents[agent_name].methods[task.name]
-        #decomposed_task = AbstractTask(task[0], task[1:], agent_name, agents[agent_name].currently_decomposed_task,
-        #                               agents[agent_name].currently_explored_decompo_number, [],
-        #                               len(agents[agent_name].methods[task[0]]))
         for i, decompo in enumerate(decompos):
             newagents = copy.deepcopy(agents)
             subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task.parameters)
@@ -634,44 +472,12 @@ def get_all_applicable_actions(agents, agent_name, solutions):
                             "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
                         )
                 newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
-                #decomposed_task.how.append(subtasks)
-                #newagents[agent_name].currently_explored_decompo_number = i
-                #newagents[agent_name].currently_decomposed_task = decomposed_task
-                get_all_applicable_actions(newagents, agent_name, solutions)
+                get_all_applicable_actions(newagents, agent_name, solutions, previous_action)
         return
     print("looking for:", task.name, "not a task nor an action of agent", agent_name)
     return False
 
 
-def get_first_applicable_action(agents, agent_name):
-    if agents[agent_name].tasks == []:
-        newagents = copy.deepcopy(agents)
-        newagents[agent_name].plan.append(Operator("IDLE", [], None, None))  # Default action
-        return [newagents]
-    task = agents[agent_name].tasks[0]
-    if task[0] in agents[agent_name].operators:
-        operator = agents[agent_name].operators[task[0]]
-        newagents = copy.deepcopy(agents)
-        result = operator(newagents, newagents[agent_name].state, agent_name, *task[1:])
-        if result == False:
-            return False
-        newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
-        newagents[agent_name].plan.append(
-            Operator(task[0], task[1:], newagents[agent_name].currently_decomposed_task, operator))
-        return [newagents]
-    if task[0] in agents[agent_name].methods:
-        decompos = agents[agent_name].methods[task[0]]
-        decomposed_task = AbstractTask(task[0], task[1:], agents[agent_name].currently_decomposed_task, [])
-        for decompo in decompos:
-            newagents = copy.deepcopy(agents)
-            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task[1:])
-            if subtasks != False:
-                newagents[agent_name].tasks = subtasks + newagents[agent_name].tasks[1:]
-                decomposed_task.how.append(subtasks)
-                newagents[agent_name].currently_decomposed_task = decomposed_task
-                return get_first_applicable_action(newagents, agent_name)
-        # No decompo or all decompo failed
-        return False
-    return False
-
+def get_first_applicable_action(agents, agent_name, solutions):
+    raise NotImplementedError("Not implemented yet.")
 

@@ -51,44 +51,43 @@ class RosNode:
         rospy.spin()
 
     def create_primitive_task(self, action):
+        print(action)
         task = Task()
         task.id = action.id
         task.type = task.PRIMITIVE_TASK
         task.name = action.name
-        task.parameters = action.parameters
+        task.parameters = [*action.parameters]
         task.agent = action.agent
         task.successors = []
         if action.why is None:
             task.decomposition_of = -1
         return task
 
-    def send_plan(self, agentss, ctrlable_name, unctrlable_name):
-        print(ctrlable_name)
-        print(unctrlable_name)
+    def send_plan(self, actions, ctrlable_name, unctrlable_name):
         existing_edges = set()
         existing_tasks = {}
         msg = Plan()
         msg.tasks = []
-        for agents in agentss:
-            action = agents[unctrlable_name].plan[-1]
+        for action in actions:
             while action is not None:
                 if action.id not in existing_tasks:
                     task = self.create_primitive_task(action)
+                    # print(task)
                     msg.tasks.append(task)
                     existing_tasks[action.id] = task
                 task = existing_tasks[action.id]
-                if action.previous is not None:
+                if action.previous is not None and action.previous.id not in task.predecessors:
                     task.predecessors.append(action.previous.id)
                 if action.next is not None:
                     for n in action.next:
-                        task.successors.append(n.id)
+                        if n.id not in task.successors:
+                            task.successors.append(n.id)
                 why = action.why
                 how = action
                 while why is not None:
-                    print("Checking", why, how)
                     if (why.id, how.id) not in existing_edges:
                         if why.id not in existing_tasks:
-                            #print("adding", why.id, how.id)
+                            print("adding", why.id, how.id)
                             task = Task()
                             task.id = why.id
                             task.type = task.ABSTRACT_TASK
@@ -116,8 +115,6 @@ class RosNode:
                     how = why
                     why = why.why
                 action = action.previous
-
-        print("send plan")
         self.plan_pub.publish(msg)
 
 

@@ -1,6 +1,6 @@
-import pyhop
-from pyhop.ros import RosNode
-from pyhop.standard_domains import generate_standard_domain
+import hatpehda
+from hatpehda.ros import RosNode
+from hatpehda.standard_domains import generate_standard_domain
 
 from copy import deepcopy
 
@@ -84,8 +84,8 @@ def robot_stack(agents, self_state, self_name):
         return False
 
 
-pyhop.declare_operators("human", human_pick, human_stack, human_wait)
-pyhop.declare_operators("robot", robot_pick, robot_stack)
+hatpehda.declare_operators("human", human_pick, human_stack, human_wait)
+hatpehda.declare_operators("robot", robot_pick, robot_stack)
 
 ### Methods definitions
 
@@ -120,7 +120,7 @@ def stack_cube_human(agents, self_state, self_name, goal):
         return [("human_stack",)]
     return False
 
-def moveb_m_robot(agents, self_state: pyhop.State, self_name, c, goal):
+def moveb_m_robot(agents, self_state: hatpehda.State, self_name, c, goal):
     """
     @param agents:
     @param self_state:
@@ -189,15 +189,15 @@ def stack_robot(agents, self_state, self_name, goal):
     return False
 
 
-pyhop.declare_methods("human", "stack_cube", stack_cube_human)
-pyhop.declare_methods("human", "move_one", moveb_m_human)
-pyhop.declare_methods("robot", "move_one", moveb_m_robot)
-pyhop.declare_methods("human", "stack", stack_human)
-pyhop.declare_methods("robot", "stack", stack_robot)
+hatpehda.declare_methods("human", "stack_cube", stack_cube_human)
+hatpehda.declare_methods("human", "move_one", moveb_m_human)
+hatpehda.declare_methods("robot", "move_one", moveb_m_robot)
+hatpehda.declare_methods("human", "stack", stack_human)
+hatpehda.declare_methods("robot", "stack", stack_robot)
 
-pyhop.print_operators()
+hatpehda.print_operators()
 
-pyhop.print_methods()
+hatpehda.print_methods()
 
 
 def make_reachable_by(state, cubes, agent):
@@ -211,7 +211,7 @@ def put_on_stack(state, cubes, is_stacked):
     state.isOnStack.update({c: is_stacked for c in cubes})
 
 
-state1_h = pyhop.State("state1_h")
+state1_h = hatpehda.State("state1_h")
 state1_h.cubes = ["cube1", "cube2", "cube3", "cube4", "cube5", "cube6"]
 make_reachable_by(state1_h, state1_h.cubes[:3], ["human"])
 make_reachable_by(state1_h, state1_h.cubes[3:], ["robot"])
@@ -222,41 +222,41 @@ state1_h.onStack = []
 
 state1_r = deepcopy(state1_h)
 
-goal1_h = pyhop.Goal("goal1_h")
+goal1_h = hatpehda.Goal("goal1_h")
 goal1_h.isOnStack = {"cube4": True, "cube5": True, "cube6": True}
 goal1_h.onStack = ["cube4", "cube5", "cube6"]
 goal1_r = deepcopy(goal1_h)
 
-pyhop.set_state("human", state1_h)
-pyhop.add_tasks("human", [('stack', goal1_h)])
-pyhop.set_state("robot", state1_r)
-pyhop.add_tasks("robot", [('stack', goal1_r)])
+hatpehda.set_state("human", state1_h)
+hatpehda.add_tasks("human", [('stack', goal1_h)])
+hatpehda.set_state("robot", state1_r)
+hatpehda.add_tasks("robot", [('stack', goal1_r)])
 
-pyhop.print_state(pyhop.agents["human"].state)
+hatpehda.print_state(hatpehda.agents["human"].state)
 
 sol = []
-plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+plans = hatpehda.seek_plan_robot(hatpehda.agents, "robot", sol)
 rosnode = None
 
 generate_standard_domain("plop.xml", "simple_cube_pile")
 
 def on_new_plan_req(agents):
-    pyhop.reset_agents_tasks()
-    pyhop.set_state("robot", state1_r)
-    pyhop.set_state("human", state1_h)
+    hatpehda.reset_agents_tasks()
+    hatpehda.set_state("robot", state1_r)
+    hatpehda.set_state("human", state1_h)
     for ag, tasks in agents.items():
-        pyhop.add_tasks(ag, [(t[0], *t[1]) for t in tasks])
+        hatpehda.add_tasks(ag, [(t[0], *t[1]) for t in tasks])
 
-    pyhop.print_state(pyhop.agents["robot"].state)
-
-
+    hatpehda.print_state(hatpehda.agents["robot"].state)
 
 
-    print(pyhop.agents["robot"].tasks)
-    pyhop.print_methods("robot")
-    pyhop.print_methods("human")
+
+
+    print(hatpehda.agents["robot"].tasks)
+    hatpehda.print_methods("robot")
+    hatpehda.print_methods("human")
     sol = []
-    plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+    plans = hatpehda.seek_plan_robot(hatpehda.agents, "robot", sol)
     print(sol)
     rosnode.send_plan(sol)
 
@@ -266,7 +266,7 @@ print(plans)
 #rosnode.wait_for_request()
 
 print(len(sol), "solutions found")
-from pyhop import gui
+from hatpehda import gui
 gui.show_plan(sol)
 for agents in sol:
     reconstituted_plan = [None] * (2*len(agents["robot"].plan))

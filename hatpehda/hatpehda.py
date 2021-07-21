@@ -1,99 +1,21 @@
 """
-Pyhop, version 1.2.2 -- a simple SHOP-like planner written in Python.
-Author: Dana S. Nau, 2013.05.31
+HATPEHDA, version 1.0.0 -- an HTN planner emulating human decisions and actions written in Python, inspired from PyHop (under Apache 2.0 License)
+Author: Guilhem Buisan
 
-Copyright 2013 Dana S. Nau - http://www.cs.umd.edu/~nau
+Copyright 2020 Guilhem Buisan
 
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-     http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-
-Pyhop should work correctly in both Python 2.7 and Python 3.2.
-For examples of how to use it, see the example files that come with Pyhop.
-
-Pyhop provides the following classes and functions:
-
-- foo = State('foo') tells Pyhop to create an empty state object named 'foo'.
-  To put variables and values into it, you should do assignments such as
-  foo.var1 = val1
-
-- bar = Goal('bar') tells Pyhop to create an empty goal object named 'bar'.
-  To put variables and values into it, you should do assignments such as
-  bar.var1 = val1
-
-- print_state(foo) will print the variables and values in the state foo.
-
-- print_goal(foo) will print the variables and values in the goal foo.
-
-- declare_operators(o1, o2, ..., ok) tells Pyhop that o1, o2, ..., ok
-  are all of the planning operators; this supersedes any previous call
-  to declare_operators.
-
-- print_operators() will print out the list of available operators.
-
-- declare_methods('foo', m1, m2, ..., mk) tells Pyhop that m1, m2, ..., mk
-  are all of the methods for tasks having 'foo' as their taskname; this
-  supersedes any previous call to declare_methods('foo', ...).
-
-- print_methods() will print out a list of all declared methods.
-
-- pyhop(state1,tasklist) tells Pyhop to find a plan for accomplishing tasklist
-  (a list of tasks), starting from an initial state state1, using whatever
-  methods and operators you declared previously.
-
-- In the above call to pyhop, you can add an optional 3rd argument called
-  'verbose' that tells pyhop how much debugging printout it should provide:
-- if verbose = 0 (the default), pyhop returns the solution but prints nothing;
-- if verbose = 1, it prints the initial parameters and the answer;
-- if verbose = 2, it also prints a message on each recursive call;
-- if verbose = 3, it also prints info about what it's computing.
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 """
-
-# Pyhop's planning algorithm is very similar to the one in SHOP and JSHOP
-# (see http://www.cs.umd.edu/projects/shop). Like SHOP and JSHOP, Pyhop uses
-# HTN methods to decompose tasks into smaller and smaller subtasks, until it
-# finds tasks that correspond directly to actions. But Pyhop differs from
-# SHOP and JSHOP in several ways that should make it easier to use Pyhop
-# as part of other programs:
-#
-# (1) In Pyhop, one writes methods and operators as ordinary Python functions
-#     (rather than using a special-purpose language, as in SHOP and JSHOP).
-#
-# (2) Instead of representing states as collections of logical assertions,
-#     Pyhop uses state-variable representation: a state is a Python object
-#     that contains variable bindings. For example, to define a state in
-#     which box b is located in room r1, you might write something like this:
-#     s = State()
-#     s.loc['b'] = 'r1'
-#
-# (3) You also can define goals as Python objects. For example, to specify
-#     that a goal of having box b in room r2, you might write this:
-#     g = Goal()
-#     g.loc['b'] = 'r2'
-#     Like most HTN planners, Pyhop will ignore g unless you explicitly
-#     tell it what to do with g. You can do that by referring to g in
-#     your methods and operators, and passing g to them as an argument.
-#     In the same fashion, you could tell Pyhop to achieve any one of
-#     several different goals, or to achieve them in some desired sequence.
-#
-# (4) Unlike SHOP and JSHOP, Pyhop doesn't include a Horn-clause inference
-#     engine for evaluating preconditions of operators and methods. So far,
-#     I've seen no need for it; I've found it easier to write precondition
-#     evaluations directly in Python. But I could consider adding such a
-#     feature if someone convinces me that it's really necessary.
-#
-# Accompanying this file are several files that give examples of how to use
-# Pyhop. To run them, launch python and type "import blocks_world_examples"
-# or "import simple_travel_example".
-
 
 from __future__ import print_function
 
@@ -126,7 +48,7 @@ class Task():
         self.decompo_number = decompo_number  # The number of the decomposition from the abstract task (self.why)
         self.applicable = True
         self.previous = None
-        self.next = None
+        self.next = []
 
     def assign_next_id(self):
         self.id = Task.__ID
@@ -144,8 +66,6 @@ class Operator(Task):
         new = copy.deepcopy(other)
         new.assign_next_id()
         return new
-
-
 
     def __repr__(self):
         return str((self.name, *self.parameters))
@@ -285,10 +205,10 @@ def add_tasks(agent, tasks, to_agents=None):
             raise TypeError("Asked to add task '{}' to agent '{}' but it is not defined "
                             "neither in its operators nor methods.".format(t[0], agent))
 
-def declare_trigger(agent, trigger):
+def declare_triggers(agent, *triggers):
     if agent not in agents:
         agents[agent] = Agent(agent)
-    agents[agent].triggers.append(trigger)
+    agents[agent].triggers += triggers
 
 def reset_agents_tasks():
     for agent in agents:
@@ -297,6 +217,17 @@ def reset_agents_tasks():
 def reset_planner():
     global agents
     agents = {}
+
+############################################################
+# Decorators for specific operators and methods functions
+
+def multi_decomposition(decompo):
+    def prepending(*args, **kwargs):
+        result = decompo(*args, **kwargs)
+        if result is False or result == [] or result is None:
+            return result
+        return "MULTI", result
+    return prepending
 
 
 ############################################################
@@ -344,7 +275,8 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
     if fails is None:
         fails = []
     if agents[agent_name].tasks == []:
-        sols.append(agents)
+        _backtrack_plan(agents[uncontrollable_agent_name].plan[-1])
+        sols.append(agents[uncontrollable_agent_name].plan[-1])
         return True
     task = agents[agent_name].tasks[0]
     if task.name in agents[agent_name].operators:
@@ -352,50 +284,77 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
         newagents = copy.deepcopy(agents)
         result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
         if result == False:
+            #print(task.name + " not feasible...")
             return False
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
         action = Operator.copy_new_id(task)
         action.previous = previous_action
         newagents[agent_name].plan.append(action)
+        for a in agents:
+            if a == agent_name:
+                continue
+            for t in newagents[a].triggers:
+                triggered = t(newagents, newagents[a].state, a)
+                if triggered != False:
+                    triggered_subtasks = []
+                    for sub in triggered:
+                        if sub[0] in agents[a].methods:
+                            triggered_subtasks.append(AbstractTask(sub[0], sub[1:], a, None, None, [], len(newagents[a].methods[sub[0]])))
+                        elif sub[0] in agents[a].operators:
+                            triggered_subtasks.append(Operator(sub[0], sub[1:], a, None, None, newagents[a].operators[sub[0]]))
+                        else:
+                            raise TypeError(
+                                "Error: the trigger function '{}'"
+                                "returned a subtask '{}' which is neither in the methods nor in the operators "
+                                "of agent '{}'".format(t.__name__, sub[0], a)
+                            )
+                    newagents[a].tasks = triggered_subtasks + newagents[a].tasks
+                    break
         new_possible_agents = get_human_next_actions(newagents, uncontrollable_agent_name, previous_action=action)
         if new_possible_agents == False:
             # No action is feasible for the human
-            print("No action feasible for the human")
+            #print("No action feasible for the human")
             return False
         for ag in new_possible_agents:
             seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action=ag[uncontrollable_agent_name].plan[-1])
-        print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
+        #print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
         return True
     if task.name in agents[agent_name].methods:
         decompos = agents[agent_name].methods[task.name]
         reachable_agents = []
         for i, decompo in enumerate(decompos):
-            newagents = copy.deepcopy(agents)
-            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task.parameters)
-            if subtasks is None:
+            newagentsdecompo = copy.deepcopy(agents)
+            result = decompo(newagentsdecompo, newagentsdecompo[agent_name].state, agent_name, *task.parameters)
+            if result is None:
                 raise TypeError(
                     "Error: the decomposition function: {} of task {} has returned None. It should return a list or False.".format(decompo.__name__,  task.name))
-            if subtasks != False:
-                subtasks_obj = []
-                for sub in subtasks:
-                    if sub[0] in agents[agent_name].methods:
-                        subtasks_obj.append(AbstractTask(sub[0], sub[1:], agent_name, task, i, [], len(agents[agent_name].methods[sub[0]])))
-                    elif sub[0] in agents[agent_name].operators:
-                        subtasks_obj.append(Operator(sub[0], sub[1:], agent_name, task, i, agents[agent_name].operators[sub[0]]))
-                    else:
-                        raise TypeError(
-                            "Error: the decomposition function '{}' of task '{}' "
-                            "returned a subtask '{}' which is neither in the methods nor in the operators "
-                            "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
-                        )
+            if result != False:
+                subtaskss = None
+                if result != [] and isinstance(result[0], str) and result[0] == "MULTI":
+                    subtaskss = result[1]
+                else:
+                    subtaskss = [result]
+                for subtasks in subtaskss:
+                    newagents = copy.deepcopy(newagentsdecompo)
+                    subtasks_obj = []
+                    for sub in subtasks:
+                        if sub[0] in agents[agent_name].methods:
+                            subtasks_obj.append(AbstractTask(sub[0], sub[1:], agent_name, task, i, [], len(agents[agent_name].methods[sub[0]])))
+                        elif sub[0] in agents[agent_name].operators:
+                            subtasks_obj.append(Operator(sub[0], sub[1:], agent_name, task, i, agents[agent_name].operators[sub[0]]))
+                        else:
+                            raise TypeError(
+                                "Error: the decomposition function '{}' of task '{}' "
+                                "returned a subtask '{}' which is neither in the methods nor in the operators "
+                                "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
+                            )
 
-                newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
-                reachable_agents.append(newagents)
+                    newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
+                    reachable_agents.append(newagents)
         if reachable_agents == []:
             # No decomposition is achievable for this task
-            print("No decompo found for the robot for task:", task.name)
-            print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
-            print_state(newagents[agent_name].state)
+            #print("No decompo found for the robot for task:", task.name)
+            #print("robot plan:", agents[agent_name].plan, "human plan:", agents[uncontrollable_agent_name].plan)
             return False
         else:
             for ag in reachable_agents:
@@ -451,33 +410,120 @@ def get_all_applicable_actions(agents, agent_name, solutions, previous_action):
         action = Operator.copy_new_id(task)
         action.previous = previous_action
         newagents[agent_name].plan.append(action)
+        for a in agents:
+            if a == agent_name:
+                continue
+            for t in newagents[a].triggers:
+                triggered = t(newagents, newagents[a].state, a)
+                if triggered != False:
+                    triggered_subtasks = []
+                    for sub in triggered:
+                        if sub[0] in newagents[a].methods:
+                            triggered_subtasks.append(AbstractTask(sub[0], sub[1:], a, None, None, [], len(newagents[a].methods[sub[0]])))
+                        elif sub[0] in newagents[a].operators:
+                            triggered_subtasks.append(Operator(sub[0], sub[1:], a, None, None, newagents[a].operators[sub[0]]))
+                        else:
+                            raise TypeError(
+                                "Error: the trigger function '{}'"
+                                "returned a subtask '{}' which is neither in the methods nor in the operators "
+                                "of agent '{}'".format(t.__name__, sub[0], a)
+                            )
+                    newagents[a].tasks = triggered_subtasks + newagents[a].tasks
+                    break
         solutions.append(newagents)
         return
     if task.name in agents[agent_name].methods:
         decompos = agents[agent_name].methods[task.name]
         for i, decompo in enumerate(decompos):
-            newagents = copy.deepcopy(agents)
-            subtasks = decompo(newagents, newagents[agent_name].state, agent_name, *task.parameters)
-            if subtasks != False:
-                subtasks_obj = []
-                for sub in subtasks:
-                    if sub[0] in agents[agent_name].methods:
-                        subtasks_obj.append(AbstractTask(sub[0], sub[1:], agent_name, task, i, [], len(agents[agent_name].methods[sub[0]])))
-                    elif sub[0] in agents[agent_name].operators:
-                        subtasks_obj.append(Operator(sub[0], sub[1:], agent_name, task, i, agents[agent_name].operators[sub[0]]))
-                    else:
-                        raise TypeError(
-                            "Error: the decomposition function '{}' of task '{}' "
-                            "returned a subtask '{}' which is neither in the methods nor in the operators "
-                            "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
-                        )
-                newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
-                get_all_applicable_actions(newagents, agent_name, solutions, previous_action)
+            newagentsdecompo = copy.deepcopy(agents)
+            result = decompo(newagentsdecompo, newagentsdecompo[agent_name].state, agent_name, *task.parameters)
+            if result != False:
+                subtaskss = None
+                if result != [] and isinstance(result[0], str) and result[0] == "MULTI":
+                    subtaskss = result[1]
+                else:
+                    subtaskss = [result]
+                for subtasks in subtaskss:
+                    newagents = copy.deepcopy(newagentsdecompo)
+                    subtasks_obj = []
+                    for sub in subtasks:
+                        if sub[0] in agents[agent_name].methods:
+                            subtasks_obj.append(AbstractTask(sub[0], sub[1:], agent_name, task, i, [], len(agents[agent_name].methods[sub[0]])))
+                        elif sub[0] in agents[agent_name].operators:
+                            subtasks_obj.append(Operator(sub[0], sub[1:], agent_name, task, i, agents[agent_name].operators[sub[0]]))
+                        else:
+                            raise TypeError(
+                                "Error: the decomposition function '{}' of task '{}' "
+                                "returned a subtask '{}' which is neither in the methods nor in the operators "
+                                "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
+                            )
+                    newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
+                    get_all_applicable_actions(newagents, agent_name, solutions, previous_action)
         return
-    print("looking for:", task.name, "not a task nor an action of agent", agent_name)
+    #print("looking for:", task.name, "not a task nor an action of agent", agent_name)
     return False
 
 
 def get_first_applicable_action(agents, agent_name, solutions):
     raise NotImplementedError("Not implemented yet.")
 
+
+def _backtrack_plan(last_action):
+    action = last_action
+    while action is not None:
+        if action.previous is not None and action not in action.previous.next:
+            action.previous.next.append(action)
+        action = action.previous
+
+
+
+
+def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict):
+    def explore_policy(action, cost):
+        if action.next is None or action.next == []:
+            return cost + cost_dict[action.name]
+
+        if action.agent == "robot":
+            total_cost = 0
+            for successor in action.next:
+                total_cost += explore_policy(successor, cost + cost_dict[action.name])
+            return total_cost / len(action.next)
+
+        elif action.agent == "human":
+            min_cost = explore_policy(action.next[0], cost + cost_dict[action.name])
+            min_i_cost = 0
+            for i, successor in enumerate(action.next[1:]):
+                new_cost = explore_policy(successor, cost + cost_dict[action.name])
+                if new_cost < min_cost:
+                    min_i_cost = i + 1
+                    min_cost = new_cost
+            action.next = [action.next[min_i_cost]]
+            action.next[0].predecessor = action
+            return min_cost
+
+    begin_action = Operator("BEGIN", [], "human", None, None, None)
+    cost_dict["BEGIN"] = 0.0
+    for s in sols:
+        first_action = get_first_action(s)
+        if s.name != "BEGIN":
+            s.predecessor = begin_action
+            begin_action.next.append(first_action)
+    act = copy.deepcopy(begin_action)
+    cost = explore_policy(act, 0)
+    return cost, act
+
+
+def get_first_action(last_action):
+        action = last_action
+        while action is not None:
+            if action.previous is None:
+                return action
+            action = action.previous
+
+def get_last_actions(action):
+        if action.next is None or action.next == []:
+            return [action]
+        actions = []
+        for act in action.next:
+            actions += get_last_actions(act)
+        return actions

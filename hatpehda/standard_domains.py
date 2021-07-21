@@ -3,8 +3,7 @@ from . import agents
 import inspect
 import re
 
-task_name = re.compile("\"([^\"]+)\"")
-re_args_list = re.compile("\(([^)]+)\)")
+task_name = re.compile("\(\s?\"([^\"]+)\"")
 re_args_type = re.compile("@ontology_type(?:\s)+(\w+)(?:\s)*:(?:\s)*(\w+)")
 
 def indent(elem, level=0):
@@ -44,12 +43,15 @@ def get_ontology_types(doc):
     return types
 
 def get_func_arguments(func):
+    partial_args = []
+    if hasattr(func, 'keywords'):
+        partial_args = list(func.keywords.keys())
+        func = func.func
     args_types = get_ontology_types(func.__doc__)
-    first_line = inspect.getsource(func).split("\n")[0].strip()
-    args_list = re_args_list.findall(first_line)[0]
     args = []
-    print(args_types)
-    for arg in args_list.split(",")[3:]:
+    for arg in func.__code__.co_varnames[3:func.__code__.co_argcount]:
+        if arg in partial_args:
+            continue
         arg = arg.strip()
         if arg not in args_types:
             print("Warning: argument", arg, "of function", func.__name__, "does not have any ontology type")

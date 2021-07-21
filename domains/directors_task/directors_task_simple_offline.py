@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 
-import pyhop
-
-from pyhop.standard_domains import generate_standard_domain
-
-from typing import Dict
-
-from functools import partial, update_wrapper
-from itertools import permutations
+import hatpehda
 from copy import deepcopy
-from pyhop import gui
+from hatpehda import gui
 
+from itertools import permutations
 import time
 
 ### Helpers
@@ -29,7 +23,7 @@ def get_box_containing_cube(state, cube):
     box = None
     if cube in state.isInContainer and state.isInContainer[cube] != []:
         for container in state.isInContainer[cube]:
-            pyhop.print_state(state)
+            hatpehda.print_state(state)
             if container in state.individuals["DtBox"]:
                 box = container
                 break
@@ -80,12 +74,22 @@ def robot_tell_human_to_tidy(agents, self_state, self_name, human, cube, box):
     if human in self_state.isReachableBy[cube]:
         ctx = [("?0", "isAbove", "table_1")]
         symbols = {"?0": cube}
-        pyhop.add_tasks(human, [("tidy", cube, box)], agents)
+        hatpehda.add_tasks(human, [("tidy", cube, box)], agents)
         return agents
     else:
         print("cube", cube, "is not reachable by", human)
     return False
 
+
+def robot_yell_human_to_tidy(agents, self_state, self_name, human, cube, box):
+    if human in self_state.isReachableBy[cube]:
+        ctx = [("?0", "isAbove", "table_1")]
+        symbols = {"?0": cube}
+        hatpehda.add_tasks(human, [("human_surprise",), ("tidy", cube, box)], agents)
+        return agents
+    else:
+        print("cube", cube, "is not reachable by", human)
+    return False
 
 def robot_wait_for_human_to_tidy(agents, self_state, self_name):
     """
@@ -160,10 +164,13 @@ def human_throw_cube(agents, self_state, self_name, box):
         return agents
     return False
 
+def human_surprise(agents, self_state, self_name):
+    return agents
+
 
 # As we don't know the agents name in advance, we store the operators here, until a ros plan call
-ctrl_operators = [robot_tell_human_to_tidy, robot_wait_for_human_to_tidy, robot_congratulate]
-unctrl_operators = [human_pick_cube, human_drop_cube, human_throw_cube]
+ctrl_operators = [robot_tell_human_to_tidy, robot_wait_for_human_to_tidy, robot_congratulate, robot_yell_human_to_tidy]
+unctrl_operators = [human_pick_cube, human_drop_cube, human_throw_cube, human_surprise]
 
 
 def robot_wait_human(agents, self_state, self_name, cube, box, human):
@@ -188,7 +195,10 @@ def robot_tidy_one(agents, self_state, self_name, cube, box, human):
     """
     return [("robot_tell_human_to_tidy", human, cube, box), ("wait_for_human", cube, box, human)]
 
+def robot_yell_tidy_one(agents, self_state, self_name, cube, box, human):
+    return [("robot_yell_human_to_tidy", human, cube, box), ("wait_for_human", cube, box, human)]
 
+@hatpehda.multi_decomposition
 def robot_tidy(agents, self_state, self_name, goal):
     """
     @param agents:
@@ -196,7 +206,7 @@ def robot_tidy(agents, self_state, self_name, goal):
     @param self_name:
     @return:
     """
-    pyhop.print_goal(goal)
+    hatpehda.print_goal(goal)
     cubes_boxes_cost = []
     human = "human"
     for ag in agents:
@@ -204,21 +214,27 @@ def robot_tidy(agents, self_state, self_name, goal):
             human = ag
             break
 
-    print("Human name:", human)
-
     for c, boxes in goal.isInContainer.items():
         if boxes[0] in self_state.isInContainer[c]:
             continue
         cubes_boxes_cost.append((c, boxes[0], 1))
 
-    if cubes_boxes_cost == []:
-        return []
-    cubes_boxes_cost = sorted(cubes_boxes_cost, key=lambda x: x[2])
-    for t in agents[self_name].tasks:
-        print("Task: ", t.name, t.parameters)
-        if t.name == "robot_congratulate" and t.parameters == (human,):
-            return [('tidy_one', cubes_boxes_cost[0][0], cubes_boxes_cost[0][1], human), ("tidy_cubes", goal)]
-    return [('tidy_one', cubes_boxes_cost[0][0], cubes_boxes_cost[0][1], human), ("tidy_cubes", goal), ("robot_congratulate", human)]
+    tasks = []
+    for perm in permutations(cubes_boxes_cost):
+        t = []
+        for p in perm:
+            t.append(('tidy_one', p[0], p[1], human))
+        t.append(("robot_congratulate", human))
+        tasks.append(t)
+    return tasks
+
+    # if cubes_boxes_cost == []:
+    #     return []
+    # cubes_boxes_cost = sorted(cubes_boxes_cost, key=lambda x: x[2])
+    # for t in agents[self_name].tasks:
+    #     if t.name == "robot_congratulate" and t.parameters == (human,):
+    #         return [('tidy_one', cubes_boxes_cost[0][0], cubes_boxes_cost[0][1], human), ("tidy_cubes", goal)]
+    # return [('tidy_one', cubes_boxes_cost[0][0], cubes_boxes_cost[0][1], human), ("tidy_cubes", goal), ("robot_congratulate", human)]
 
 
 def human_tidy(agents, self_state, self_name, cube, box):
@@ -236,15 +252,57 @@ def human_tidy(agents, self_state, self_name, cube, box):
 
 
 # We don't know the agents name in advance so we store them here, until we can add the proper agents
-ctrl_methods = [("tidy_one", robot_tidy_one), ("tidy_cubes", robot_tidy), ("wait_for_human", robot_wait_human)]
+ctrl_methods = [("tidy_one", robot_tidy_one, robot_yell_tidy_one), ("tidy_cubes", robot_tidy), ("wait_for_human", robot_wait_human)]
 unctrl_methods = [("tidy", human_tidy), ("human_store", lambda a, s, n, box: [("human_drop_cube", box)], lambda a, s, n, box: [("human_throw_cube", box)])]
 
+def get_first_action(last_action):
+    action = last_action
+    while action is not None:
+        if action.previous is None:
+            return action
+        action = action.previous
+
+def get_last_actions(action):
+    if action.next is None or action.next == []:
+        return [action]
+    actions = []
+    for act in action.next:
+        actions += get_last_actions(act)
+    return actions
+
+def select_policies(first_action):
+
+    def explore_policy(action, cost):
+        if action.next is None or action.next == []:
+            return cost + 1
+
+        if action.agent == "robot":
+            total_cost = 0
+            for successor in action.next:
+                total_cost += explore_policy(successor, cost + 1)
+            return total_cost / len(action.next)
+
+        elif action.agent == "human":
+            min_cost = explore_policy(action.next[0], cost + 1)
+            min_i_cost = 0
+            for i, successor in enumerate(action.next[1:]):
+                new_cost = explore_policy(successor, cost + 1)
+                if new_cost < min_cost:
+                    min_i_cost = i + 1
+                    min_cost = new_cost
+            action.next = [action.next[min_i_cost]]
+            action.next[min_i_cost].predecessor = action
+            return min_cost
+
+    act = deepcopy(first_action)
+    cost = explore_policy(act, 1)
+    return cost, act
 
 if __name__ == "__main__":
 
     start = time.time()
 
-    state = pyhop.State("robot_init")
+    state = hatpehda.State("robot_init")
     state.types = {"Agent": ["isHolding"], "DtCube": ["isInContainer", "isHeldBy", "isReachableBy"],
                    "DtBox": [], "ReachableDtBox": [],
                    "ReceiverReachableDtBox": [],
@@ -258,37 +316,46 @@ if __name__ == "__main__":
     state_filled.isHolding = {"human": []}
     state_filled.isReachableBy = {c: ["human"] for c in state_filled.individuals["DtCube"]}
 
-    pyhop.declare_operators("robot", *ctrl_operators)
+    hatpehda.declare_operators("robot", *ctrl_operators)
     for me in ctrl_methods:
-        pyhop.declare_methods("robot", *me)
-    pyhop.declare_operators("human", *unctrl_operators)
+        hatpehda.declare_methods("robot", *me)
+    hatpehda.declare_operators("human", *unctrl_operators)
     for me in unctrl_methods:
-        pyhop.declare_methods("human", *me)
+        hatpehda.declare_methods("human", *me)
 
-    robot_goal = pyhop.Goal("robot_goal")
+    robot_goal = hatpehda.Goal("robot_goal")
     robot_goal.isInContainer = {"cube_BGTG": ["throw_box_green"], "cube_GBTG": ["throw_box_green"]}
 
-    pyhop.set_state("robot", state_filled)
-    pyhop.add_tasks("robot", [("tidy_cubes", robot_goal)])
+    hatpehda.set_state("robot", state_filled)
+    hatpehda.add_tasks("robot", [("tidy_cubes", robot_goal)])
 
     human_state = deepcopy(state_filled)
     human_state.__name__ = "human_init"
-    pyhop.set_state("human", human_state)
+    hatpehda.set_state("human", human_state)
 
 
     sols = []
     fails = []
-    pyhop.seek_plan_robot(pyhop.agents, "robot", sols, "human", fails)
+    hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
     end = time.time()
 
     print(len(sols))
 
     gui.show_plan(sols, "robot", "human")
+    #rosnode = ros.RosNode.start_ros_node("planner", lambda x: print("plop"))
+    #time.sleep(5)
+    #rosnode.send_plan(sols, "robot", "human")
+    input()
+    first_action = get_first_action(sols[0])
+    cost, action = select_policies(first_action)
+    gui.show_plan(get_last_actions(action), "robot", "human")
+    print("policy cost", cost)
 
-    # print(len(pyhop.ma_solutions))
-    # for ags in pyhop.ma_solutions:
+    # print(len(hatpehda.ma_solutions))
+    # for ags in hatpehda.ma_solutions:
     #    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
     # print("Took", end - start, "seconds")
 
     # regHandler.export_log("robot_planning")
     # regHandler.cleanup()
+

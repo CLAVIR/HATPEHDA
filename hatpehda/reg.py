@@ -15,6 +15,8 @@ class REGHandler:
 
     def cleanup(self):
         for agent in self.planning_ontologies_commit:
+            rospy.loginfo("Deleting " + agent + "_planning")
+
             self.ontos.delete(agent+"_planning")
         self.planning_ontologies_commit = {}
 
@@ -32,7 +34,10 @@ class REGHandler:
         #print(disambiguation_req.baseFacts)
         disambiguate_srv = rospy.ServiceProxy('/KSP/disambiguate', Disambiguation)
         resp1 = disambiguate_srv(disambiguation_req)
-        #print(resp1)
+        # print(disambiguation_req)
+        # print("---")
+        # print(resp1)
+        #self.export_log(agent_name+"_planning")
         return resp1
 
     def get_res(self, agent_name, state, context, targets):
@@ -45,8 +50,10 @@ class REGHandler:
             for e in entities:
                 for rel in state.types[type]:
                     for on in getattr(state, rel)[e]:
+                        #print("Adding relation", e, rel, on)
                         onto.feeder.addObjectProperty(e, rel, on)
         commit = onto.feeder.commitAuto()
+        rospy.loginfo("Committed to ontology of agent " + agent_name)
 
     def get_planning_ontology(self, agent_name, state):
         if agent_name not in self.planning_ontologies_commit:
@@ -65,13 +72,17 @@ class REGHandler:
             print("""Could not create planning ontology with name '{dst}' by making a copy of '{src}'.
                   Ensure that that ontology '{src}' exists and '{dst}' does not.""".format(dst=planning_name, src=agent_name))
             return
+        rospy.loginfo("Copied " + agent_name + " in " + planning_name)
         planning_onto.close()
+        rospy.loginfo(planning_name + " closed")
         planning_onto.feeder.waitConnected()
+        rospy.loginfo(planning_name + " connected")
         for type, entities in state.individuals.items():
             for e in entities:
                 for rel in state.types[type]:
                     planning_onto.feeder.removeProperty(e, rel)
         self.planning_ontologies_commit[agent_name] = planning_onto.feeder.commitAuto()
+        print("Created planning ontology (commit)", planning_name)
 
     def export_log(self, onto_name):
         self.ontos.get(onto_name).actions.export('/home/gbuisan/plop.xml')

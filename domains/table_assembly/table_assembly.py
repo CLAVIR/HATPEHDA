@@ -1,6 +1,6 @@
-import pyhop
+import hatpehda
 from copy import deepcopy
-from pyhop import gui
+from hatpehda import gui
 
 from typing import Dict
 
@@ -25,7 +25,7 @@ def human_pick(agents, self_state, self_name, p):
         return False
 
 
-def robot_pick(agents: Dict[str, pyhop.Agent], self_state, self_name, c):
+def robot_pick(agents: Dict[str, hatpehda.Agent], self_state, self_name, c):
     if self_name in self_state.isReachableBy[c] and self_state.isCarrying[self_name] == []:
         for a in agents.values():
             a.state.isReachableBy[c] = []
@@ -58,14 +58,14 @@ def robot_assemble(agents, self_state, self_name, top):
         return False
 
 def robot_ask_human_to_give_leg(agents, self_state, self_name, human, leg):
-    agents[human].tasks.insert(0, ("take_give_to_robot", leg, self_name))
+    hatpehda.add_tasks(human, [("take_give_to_robot", leg, self_name)], agents)
     print(agents[human].tasks)
     return agents
 
 def robot_ask_to_help_in_assembly(agents, self_state, self_name, human, top, legs):
-    goal = pyhop.Goal("human_goal")
+    goal = hatpehda.Goal("human_goal")
     goal.assembly = {top: legs}
-    agents[human].tasks.insert(0, ("assemble_table", top, goal))
+    hatpehda.add_tasks(human, [("assemble_table", top, goal)], agents)
     return agents
 
 def human_give_to_robot(agents, self_state, self_name, robot):
@@ -89,9 +89,9 @@ def robot_take_from_human(agents, self_state, self_name, human):
     return False
 
 
-pyhop.declare_operators("human", human_pick, human_assemble, human_give_to_robot, human_wait_for_give)
-pyhop.declare_operators("robot", robot_pick, robot_assemble, robot_ask_human_to_give_leg, robot_ask_to_help_in_assembly,
-                        robot_take_from_human, robot_wait_for_take)
+hatpehda.declare_operators("human", human_pick, human_assemble, human_give_to_robot, human_wait_for_give)
+hatpehda.declare_operators("robot", robot_pick, robot_assemble, robot_ask_human_to_give_leg, robot_ask_to_help_in_assembly,
+                           robot_take_from_human, robot_wait_for_take)
 
 ### Methods definitions
 
@@ -174,19 +174,19 @@ def handover_take_robot(agents, self_state, self_name, human):
 
 
 
-pyhop.declare_methods("human", "assemble_table", assemble_table_human)
-pyhop.declare_methods("human", "handle_leg", take_give_leg_human, take_assemble_human)
-pyhop.declare_methods("human", "take_give_to_robot", take_give_leg_to_robot_human)
-pyhop.declare_methods("human", "give_to_robot", handover_give_human)
-pyhop.declare_methods("robot", "assemble_tables", assemble_tables_robot, assemble_tables_with_help_robot)
-pyhop.declare_methods("robot", "assemble_table", assemble_table_robot)
-pyhop.declare_methods("robot", "handle_leg", handover_assemble_robot, take_assemble_robot)
-pyhop.declare_methods("robot", "handover_take", handover_take_robot)
+hatpehda.declare_methods("human", "assemble_table", assemble_table_human)
+hatpehda.declare_methods("human", "handle_leg", take_give_leg_human, take_assemble_human)
+hatpehda.declare_methods("human", "take_give_to_robot", take_give_leg_to_robot_human)
+hatpehda.declare_methods("human", "give_to_robot", handover_give_human)
+hatpehda.declare_methods("robot", "assemble_tables", assemble_tables_robot, assemble_tables_with_help_robot)
+hatpehda.declare_methods("robot", "assemble_table", assemble_table_robot)
+hatpehda.declare_methods("robot", "handle_leg", handover_assemble_robot, take_assemble_robot)
+hatpehda.declare_methods("robot", "handover_take", handover_take_robot)
 
 
-pyhop.print_operators()
+hatpehda.print_operators()
 
-pyhop.print_methods()
+hatpehda.print_methods()
 
 
 def make_reachable_by(state, indivs, agents):
@@ -205,7 +205,7 @@ def make_reachable_by(state, indivs, agents):
 
 
 
-state1_r = pyhop.State("state1_r")
+state1_r = hatpehda.State("state1_r")
 state1_r.individuals = {"leg": ["leg1", "leg2", "leg3", "leg4"], "top": ["top1"]}
 make_reachable_by(state1_r, state1_r.individuals["leg"], ["human"])
 make_reachable_by(state1_r, ["leg3", "leg4"], ["robot"])
@@ -214,22 +214,22 @@ state1_r.assembly = {"top1": []}
 
 state1_h = deepcopy(state1_r)
 
-goal1_r = pyhop.Goal("goal1_r")
+goal1_r = hatpehda.Goal("goal1_r")
 goal1_r.assembly = {"top1": ["leg1", "leg2", "leg3", "leg4"]}
 #goal1_h = deepcopy(goal1_r)
 
-pyhop.set_state("human", state1_h)
-#pyhop.add_tasks("human", [('stack', goal1_h)])
-pyhop.set_state("robot", state1_r)
-pyhop.add_tasks("robot", [('assemble_tables', goal1_r)])
+hatpehda.set_state("human", state1_h)
+#hatpehda.add_tasks("human", [('stack', goal1_h)])
+hatpehda.set_state("robot", state1_r)
+hatpehda.add_tasks("robot", [('assemble_tables', goal1_r)])
 
-#pyhop.print_state(pyhop.agents["human"].state)
+#hatpehda.print_state(hatpehda.agents["human"].state)
 
 sol = []
 fails = []
-plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol, fails)
+plans = hatpehda.seek_plan_robot(hatpehda.agents, "robot", sol, uncontrollable_agent_name="human", fails=fails)
 
-gui.show_plan(sol + fails)
+gui.show_plan(sol + fails, "robot", "human")
 
 
 print(fails)

@@ -4,7 +4,7 @@ Author: Dana Nau <nau@cs.umd.edu>, November 15, 2012
 This file should work correctly in both Python 2.7 and Python 3.2.
 """
 
-import pyhop
+import hatpehda
 
 """Each Pyhop planning operator is a Python function. The 1st argument is
 the current state, and the others are the planning operator's usual arguments.
@@ -58,4 +58,4 @@ Below, 'declare_operators(pickup, unstack, putdown, stack)' tells Pyhop
 what the operators are. Note that the operator names are *not* quoted.
 """
 
-pyhop.declare_operators(pickup, unstack, putdown, stack)
+hatpehda.declare_operators(pickup, unstack, putdown, stack)

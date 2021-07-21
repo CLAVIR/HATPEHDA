@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
-import pyhop
+import hatpehda
+
+from hatpehda.standard_domains import  generate_standard_domain
 
 import rospy
 from std_msgs.msg import String
@@ -13,9 +15,9 @@ from functools import partial, update_wrapper
 from itertools import permutations
 from copy import deepcopy
 
-from pyhop.reg import REGHandler
+from hatpehda.reg import REGHandler
 
-from pyhop.ros import RosNode
+from hatpehda.ros import RosNode
 
 import time
 
@@ -108,13 +110,24 @@ def retrieve_state_from_ontology(agent_name, state):
             for indiv in indivs:
                 related = onto.individuals.getOn(indiv, rel)
                 getattr(state, rel)[indiv] = related
-    pyhop.print_state(state)
+    hatpehda.print_state(state)
     return state
 
 
 ### Actions
 
 def robot_tell_human_to_tidy(agents, self_state, self_name, human, cube):
+    """
+
+    @param agents:
+    @param self_state:
+    @param self_name:
+    @param human:
+    @param cube:
+    @return:
+    @ontology_type human: Human
+    @ontology_type cube: Cube
+    """
     if is_cube_pickable_by(self_state, human, cube):
         ctx = [("?0", "isOnTopOf", "table_1")]
         symbols = {"?0": cube}
@@ -127,6 +140,17 @@ def robot_tell_human_to_tidy(agents, self_state, self_name, human, cube):
     return False
 
 def robot_wait_for_human_to_tidy(agents, self_state, self_name, human, cube):
+    """
+
+    @param agents:
+    @param self_state:
+    @param self_name:
+    @param human:
+    @param cube:
+    @return:
+    @ontology_type human: Human
+    @ontology_type cube: Cube
+    """
     # Todo: Check if in goal box
     if self_state.isIn[cube] == [] and self_state.isHolding[human] == [] and self_state.isHeldBy[cube] == []:
         return agents, 0.
@@ -134,6 +158,15 @@ def robot_wait_for_human_to_tidy(agents, self_state, self_name, human, cube):
 
 
 def human_pick_cube(agents, self_state, self_name, cube):
+    """
+
+    @param agents:
+    @param self_state:
+    @param self_name:
+    @param cube:
+    @return:
+    @ontology_type cube: Cube
+    """
     if is_cube_pickable_by(self_state, self_name, cube) and self_state.isHolding[self_name] == []:
         for a in agents.values():
             a.state.isIn[cube] = []
@@ -152,17 +185,42 @@ def human_drop_cube(agents, self_state, self_name):
         return agents, 1.
     return False
 
-pyhop.declare_operators("robot", robot_tell_human_to_tidy, robot_wait_for_human_to_tidy)
-pyhop.declare_operators("human", human_pick_cube, human_drop_cube)
+hatpehda.declare_operators("robot", robot_tell_human_to_tidy, robot_wait_for_human_to_tidy)
+hatpehda.declare_operators("human", human_pick_cube, human_drop_cube)
 
 def robot_tidy_one(angents, self_state, self_name, cube):
+    """
+
+    @param angents:
+    @param self_state:
+    @param self_name:
+    @param cube:
+    @return:
+    @ontology_type cube: Cube
+    """
     return [("robot_tell_human_to_tidy", "human", cube), ("robot_wait_for_human_to_tidy", "human", cube)]
 
 def robot_tidy(agents, self_state, self_name, order):
+    """
+    @param agents:
+    @param self_state:
+    @param self_name:
+    @param order:
+    @return:
+    """
     actions = [("tidy_one", c) for c in order]
     return actions
 
 def human_tidy(agents, self_state, self_name, cube):
+    """
+
+    @param agents:
+    @param self_state:
+    @param self_name:
+    @param cube:
+    @return:
+    @ontology_type cube: Cube
+    """
     return [("human_pick_cube", cube), ("human_drop_cube",)]
 
 def generate_tidy_all_orders(cubes_to_tidy):
@@ -171,10 +229,10 @@ def generate_tidy_all_orders(cubes_to_tidy):
         fn = partial(robot_tidy, order=order)
         update_wrapper(fn, robot_tidy)
         fns.append(fn)
-    pyhop.declare_methods("robot", "tidy", *fns)
+    hatpehda.declare_methods("robot", "tidy", *fns)
 
-pyhop.declare_methods("robot", "tidy_one", robot_tidy_one)
-pyhop.declare_methods("human", "tidy", human_tidy)
+hatpehda.declare_methods("robot", "tidy_one", robot_tidy_one)
+hatpehda.declare_methods("human", "tidy", human_tidy)
 
 
 
@@ -182,7 +240,7 @@ pyhop.declare_methods("human", "tidy", human_tidy)
 
 def on_new_plan_req(agents):
     for ag, tasks in agents.items():
-        state = pyhop.State(ag + "_init")
+        state = hatpehda.State(ag + "_init")
         state.types = {"Agent": ["isHolding"], "Cube": ["isIn", "isHeldBy"], "Box": [], "ReachableDtBox": [],
                          "ReceiverReachableDtBox": [],
                          "VisibleDtBox": [], "ReceiverVisibleDtBox": [], "DirectorVisibleDtBox": [],
@@ -196,16 +254,16 @@ def on_new_plan_req(agents):
 
         state_h = deepcopy(state)  # TODO: Retrieve it from the ontology
         generate_tidy_all_orders(["cube_GBTG", "cube_BBTG", "cube_GBCG", "cube_GBTB"])
-        pyhop.set_state(ag, state)
-        pyhop.add_tasks(ag, [(t[0], *t[1]) for t in tasks])
+        hatpehda.set_state(ag, state)
+        hatpehda.add_tasks(ag, [(t[0], *t[1]) for t in tasks])
 
-    pyhop.print_state(pyhop.agents["robot"].state)
-    print(pyhop.agents["robot"].tasks)
-    pyhop.print_methods("robot")
-    pyhop.print_methods("human")
+    hatpehda.print_state(hatpehda.agents["robot"].state)
+    print(hatpehda.agents["robot"].tasks)
+    hatpehda.print_methods("robot")
+    hatpehda.print_methods("human")
     sol = []
-    plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
-    print(len(pyhop.ma_solutions))
+    plans = hatpehda.seek_plan_robot(hatpehda.agents, "robot", sol)
+    print(len(hatpehda.ma_solutions))
 
 
 
@@ -224,10 +282,10 @@ if __name__ == "__main__":
 
 
     start = time.time()
-    #plans = pyhop.multi_agent_planning(verbose=0)
+    #plans = hatpehda.multi_agent_planning(verbose=0)
     end = time.time()
-    #print(len(pyhop.ma_solutions))
-    #for ags in pyhop.ma_solutions:
+    #print(len(hatpehda.ma_solutions))
+    #for ags in hatpehda.ma_solutions:
     #    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
     #print("Took", end - start, "seconds")
 

@@ -4,7 +4,7 @@ Author: Dana Nau <nau@cs.umd.edu>, November 15, 2012
 This file should work correctly in both Python 2.7 and Python 3.2.
 """
 
-import pyhop
+import hatpehda
 
 
 """
@@ -59,7 +59,7 @@ def moveb_m(state,goal):
             continue
     #
     # if we get here, no blocks can be moved to their final locations
-    b1 = pyhop.find_if(lambda x: status(x,state,goal) == 'waiting', all_blocks(state))
+    b1 = hatpehda.find_if(lambda x: status(x, state, goal) == 'waiting', all_blocks(state))
     if b1 != None:
         return [('move_one',b1,'table'), ('move_blocks',goal)]
     #
@@ -69,7 +69,7 @@ def moveb_m(state,goal):
 """
 declare_methods must be called once for each taskname. Below, 'declare_methods('get',get_m)' tells Pyhop that 'get' has one method, get_m. Notice that 'get' is a quoted string, and get_m is the actual function.
 """
-pyhop.declare_methods('move_blocks',moveb_m)
+hatpehda.declare_methods('move_blocks', moveb_m)
 
 
 ### methods for "move_one"
@@ -80,7 +80,7 @@ def move1(state,b1,dest):
     """
     return [('get', b1), ('put', b1,dest)]
 
-pyhop.declare_methods('move_one',move1)
+hatpehda.declare_methods('move_one', move1)
 
 
 ### methods for "get"
@@ -97,7 +97,7 @@ def get_m(state,b1):
     else:
         return False
 
-pyhop.declare_methods('get',get_m)
+hatpehda.declare_methods('get', get_m)
 
 
 ### methods for "put"
@@ -115,6 +115,6 @@ def put_m(state,b1,b2):
     else:
         return False
 
-pyhop.declare_methods('put',put_m)
+hatpehda.declare_methods('put', put_m)
 
 

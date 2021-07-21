@@ -1,4 +1,4 @@
-import pyhop
+import hatpehda
 from copy import deepcopy
 
 from typing import Dict
@@ -10,7 +10,7 @@ with the task to get a coffee. The coffee machine is in the kitchen. The robot k
 in the kitchen. The robot can give a goal to the human and handover object to and from the human.
 
 Result:
-Plan : [('robot_pick_mug', 'mug1'), ('robot_navigate', 'kitchen'), ('robot_ask_to_human_do_task', 'human', ('human_get_mug_make_coffee', <pyhop.Goal object at 0x7f52550179e8>, 'robot', 'mug1')), ('robot_handover_give', 'human'), ('human_handover_take', 'robot'), ('human_make_coffee', 'mug1'), ('human_handover_give', 'robot'), ('robot_handover_end',), ('robot_handover_take', 'human'), ('robot_navigate', 'experimentation_room'), ('human_handover_end',)] with cost: 0.0
+Plan : [('robot_pick_mug', 'mug1'), ('robot_navigate', 'kitchen'), ('robot_ask_to_human_do_task', 'human', ('human_get_mug_make_coffee', <hatpehda.Goal object at 0x7f52550179e8>, 'robot', 'mug1')), ('robot_handover_give', 'human'), ('human_handover_take', 'robot'), ('human_make_coffee', 'mug1'), ('human_handover_give', 'robot'), ('robot_handover_end',), ('robot_handover_take', 'human'), ('robot_navigate', 'experimentation_room'), ('human_handover_end',)] with cost: 0.0
 
 """
 
@@ -23,7 +23,7 @@ def agentsInSameRoomAs(state, agent_name, agents):
 
 ### Operators definition
 
-def robot_pick_mug(agents: Dict[str, pyhop.Agent], self_state, self_name, m):
+def robot_pick_mug(agents: Dict[str, hatpehda.Agent], self_state, self_name, m):
     if self_name in self_state.isReachableBy[m] and self_state.isCarrying[self_name] is None:
         for a in agentsInSameRoomAs(self_state, self_name, agents):
             a.state.isReachableBy[m] = []
@@ -33,7 +33,7 @@ def robot_pick_mug(agents: Dict[str, pyhop.Agent], self_state, self_name, m):
         return False
 
 
-def robot_navigate(agents: Dict[str, pyhop.Agent], self_state, self_name, to_loc):
+def robot_navigate(agents: Dict[str, hatpehda.Agent], self_state, self_name, to_loc):
     from_loc = self_state.currentLocation[self_name]
     if to_loc in self_state.connectedTo[from_loc]:
         # Updating beliefs of the agents in the room we just left
@@ -57,7 +57,7 @@ def robot_navigate(agents: Dict[str, pyhop.Agent], self_state, self_name, to_loc
         return False
 
 
-def robot_ask_to_human_do_task(agents: Dict[str, pyhop.Agent], self_state, self_name, human, task):
+def robot_ask_to_human_do_task(agents: Dict[str, hatpehda.Agent], self_state, self_name, human, task):
     if self_state.currentLocation[self_name] == self_state.currentLocation[human]:
         # We should also check if task and paramaters are verbalizable (REG)
         agents[human].tasks.insert(0, task)  # The human will accept...
@@ -65,19 +65,19 @@ def robot_ask_to_human_do_task(agents: Dict[str, pyhop.Agent], self_state, self_
     else:
         return False
     
-def robot_handover_give(agents: Dict[str, pyhop.Agent], self_state, self_name, agent):
+def robot_handover_give(agents: Dict[str, hatpehda.Agent], self_state, self_name, agent):
     if self_state.isCarrying[self_name] is not None and self_state.currentLocation[self_name] == self_state.currentLocation[agent]:
         return agents
     else:
         return False
 
-def robot_handover_end(agents: Dict[str, pyhop.Agent], self_state, self_name):
+def robot_handover_end(agents: Dict[str, hatpehda.Agent], self_state, self_name):
     if self_state.isCarrying[self_name] is None:
         return agents
     else:
         return False
 
-def robot_handover_take(agents: Dict[str, pyhop.Agent], self_state, self_name, agent):
+def robot_handover_take(agents: Dict[str, hatpehda.Agent], self_state, self_name, agent):
     if self_state.isCarrying[self_name] is None and "handover_give" in agents[agent].plan[-1][0] and agents[agent].plan[-1][1] == self_name:
         obj = self_state.isCarrying[agent]
         for a in agentsInSameRoomAs(self_state, self_name, agents):
@@ -91,19 +91,19 @@ def robot_handover_take(agents: Dict[str, pyhop.Agent], self_state, self_name, a
 def robot_wait(agents, self_state, self_name):
     return agents
 
-def human_handover_give(agents: Dict[str, pyhop.Agent], self_state, self_name, agent):
+def human_handover_give(agents: Dict[str, hatpehda.Agent], self_state, self_name, agent):
     if self_state.isCarrying[self_name] is not None and self_state.currentLocation[self_name] == self_state.currentLocation[agent]:
         return agents
     else:
         return False
         
-def human_handover_end(agents: Dict[str, pyhop.Agent], self_state, self_name):
+def human_handover_end(agents: Dict[str, hatpehda.Agent], self_state, self_name):
     if self_state.isCarrying[self_name] is None:
         return agents
     else:
         return False
     
-def human_handover_take(agents: Dict[str, pyhop.Agent], self_state, self_name, agent):
+def human_handover_take(agents: Dict[str, hatpehda.Agent], self_state, self_name, agent):
     if self_state.isCarrying[self_name] is None and "handover_give" in agents[agent].plan[-1][0] and agents[agent].plan[-1][1] == self_name:
         obj = self_state.isCarrying[agent]
         for a in agentsInSameRoomAs(self_state, self_name, agents):
@@ -114,7 +114,7 @@ def human_handover_take(agents: Dict[str, pyhop.Agent], self_state, self_name, a
     else:
         return False
 
-def human_make_coffee(agents: Dict[str, pyhop.Agent], self_state, self_name, mug):
+def human_make_coffee(agents: Dict[str, hatpehda.Agent], self_state, self_name, mug):
     if self_state.isCarrying[self_name] == mug:
         if self_state.contains[mug] == "coffee":
             return agents
@@ -128,9 +128,9 @@ def human_make_coffee(agents: Dict[str, pyhop.Agent], self_state, self_name, mug
         return False
 
 
-pyhop.declare_operators("human", human_handover_give, human_handover_end, human_handover_take, human_make_coffee)
-pyhop.declare_operators("robot", robot_pick_mug, robot_navigate, robot_ask_to_human_do_task, robot_handover_give,
-                        robot_handover_end, robot_handover_take, robot_wait)
+hatpehda.declare_operators("human", human_handover_give, human_handover_end, human_handover_take, human_make_coffee)
+hatpehda.declare_operators("robot", robot_pick_mug, robot_navigate, robot_ask_to_human_do_task, robot_handover_give,
+                           robot_handover_end, robot_handover_take, robot_wait)
 
 ### Methods definitions
 
@@ -164,17 +164,17 @@ def human_get_mug_make_coffee(agents, self_state, self_name, goal, giver, mug):
 
 
 
-pyhop.declare_methods("human", "human_get_mug_make_coffee", human_get_mug_make_coffee)
-pyhop.declare_methods("robot", "robot_get_coffee", robot_get_coffee)
-pyhop.declare_methods("robot", "robot_ask_to_fill_cup", robot_ask_to_fill_cup)
-pyhop.declare_methods("robot", "robot_wait_for_human", robot_wait_for_human)
+hatpehda.declare_methods("human", "human_get_mug_make_coffee", human_get_mug_make_coffee)
+hatpehda.declare_methods("robot", "robot_get_coffee", robot_get_coffee)
+hatpehda.declare_methods("robot", "robot_ask_to_fill_cup", robot_ask_to_fill_cup)
+hatpehda.declare_methods("robot", "robot_wait_for_human", robot_wait_for_human)
 
-pyhop.print_operators()
+hatpehda.print_operators()
 
-pyhop.print_methods()
+hatpehda.print_methods()
 
 
-state1_r = pyhop.State("state1_r")
+state1_r = hatpehda.State("state1_r")
 state1_r.isIn = {"coffee_machine": "kitchen", "mug1": "experimentation_room", "mug2": "experimentation_room", "mug3": "kitchen"}
 state1_r.contains = {"mug1": None, "mug2": "water", "mug3": None}
 state1_r.agentsInRoom = {"kitchen": ["human"], "experimentation_room": ["robot"]}
@@ -186,24 +186,24 @@ state1_r.connectedTo = {"kitchen": ["experimentation_room"], "experimentation_ro
 
 state1_h = deepcopy(state1_r)
 
-goal1_r = pyhop.Goal("goal1_r")
+goal1_r = hatpehda.Goal("goal1_r")
 goal1_h = deepcopy(goal1_r)
 
-pyhop.set_state("human", state1_h)
-pyhop.set_state("robot", state1_r)
-pyhop.add_tasks("robot", [("robot_get_coffee", goal1_r, "mug1")])
+hatpehda.set_state("human", state1_h)
+hatpehda.set_state("robot", state1_r)
+hatpehda.add_tasks("robot", [("robot_get_coffee", goal1_r, "mug1")])
 
-pyhop.print_state(pyhop.agents["robot"].state)
+hatpehda.print_state(hatpehda.agents["robot"].state)
 
-# plans = pyhop.multi_agent_planning(verbose=0)
+# plans = hatpehda.multi_agent_planning(verbose=0)
 #
-# for ags in pyhop.ma_solutions:
+# for ags in hatpehda.ma_solutions:
 #     print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
 #
 # print(plans)
 
 sol = []
-plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+plans = hatpehda.seek_plan_robot(hatpehda.agents, "robot", sol)
 
 print(plans)
 

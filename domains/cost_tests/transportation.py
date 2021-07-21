@@ -1,4 +1,4 @@
-import pyhop
+import hatpehda
 
 """
 Simple travel domain to implement cost based algorithm.
@@ -56,9 +56,9 @@ def come_from_parking(agents, self_state, agent_name):
     return agents, cost_get_back_from_parking()
 
 
-pyhop.declare_operators("robot", walk, drive, go_to_parking, come_from_parking)
+hatpehda.declare_operators("robot", walk, drive, go_to_parking, come_from_parking)
 print('')
-pyhop.print_operators()
+hatpehda.print_operators()
 
 
 def travel_by_foot(agents, self_state, agent_name, x, y):
@@ -68,25 +68,25 @@ def travel_by_foot(agents, self_state, agent_name, x, y):
 def travel_by_car(agents, self_state, agent_name, x, y):
     return [('go_to_parking', ), ("drive", x, y), ("come_from_parking", )]
 
-pyhop.declare_methods("robot", "travel", travel_by_foot, travel_by_car)
-pyhop.print_methods()
+hatpehda.declare_methods("robot", "travel", travel_by_foot, travel_by_car)
+hatpehda.print_methods()
 
-state1_h = pyhop.State("state1_h")
+state1_h = hatpehda.State("state1_h")
 state1_h.places = ["home", "park", "work", "beach"]
 state1_h.loc = {"robot": "home", "car": "home"}
 state1_h.is_at_parking = {"human": False}
 state1_h.dist = {"home": {"work": 1, "park": 0.5, "beach": 50}, "work": {"home": 1, "park": 1.5, "beach": 50},
                  "park": {"home": 0.5, "work": 1.5, "beach": 51}, "beach": {"home": 50, "work": 50, "park": 51}}
 
-pyhop.set_state("robot", state1_h)
-pyhop.add_tasks("robot", [('travel', "home", "work")])
-# plans = pyhop.multi_agent_planning()
-# print(len(pyhop.ma_solutions), " plans found !")
-# for ags in pyhop.ma_solutions:
+hatpehda.set_state("robot", state1_h)
+hatpehda.add_tasks("robot", [('travel', "home", "work")])
+# plans = hatpehda.multi_agent_planning()
+# print(len(hatpehda.ma_solutions), " plans found !")
+# for ags in hatpehda.ma_solutions:
 #     print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
 
 sol = []
-plans = pyhop.seek_plan_robot(pyhop.agents, "robot", sol)
+plans = hatpehda.seek_plan_robot(hatpehda.agents, "robot", sol)
 
 print(plans)
 

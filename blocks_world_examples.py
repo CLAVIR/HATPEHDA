@@ -5,7 +5,7 @@ This file should work correctly in both Python 2.7 and Python 3.2.
 """
 
 from __future__ import print_function
-from pyhop import *
+from hatpehda import *
 
 import blocks_world_operators
 print('')
@@ -21,7 +21,7 @@ print_methods()
 
 print("""
 ****************************************
-First, test pyhop on some of the operators and smaller tasks
+First, test hatpehda on some of the operators and smaller tasks
 ****************************************
 """)
 
@@ -53,7 +53,7 @@ pyhop(state1,[('get','c')], verbose=1)
 
 print("""
 ****************************************
-Run pyhop on two block-stacking problems, both of which start in state1.
+Run hatpehda on two block-stacking problems, both of which start in state1.
 The goal for the 2nd problem omits some of the conditions in the goal
 of the 1st problemk, but those conditions will need to be achieved
 anyway, so both goals should produce the same plan.
@@ -90,7 +90,7 @@ pyhop(state1,[('move_blocks', goal1b)], verbose=1)
 
 print("""
 ****************************************
-Run pyhop on two more planning problems. As before, the 2nd goal omits
+Run hatpehda on two more planning problems. As before, the 2nd goal omits
 some of the conditions in the 1st goal, but both goals should produce
 the same plan.
 ****************************************
@@ -134,7 +134,7 @@ pyhop(state2,[('move_blocks', goal2b)], verbose=1)
 
 print("""
 ****************************************
-Test pyhop on planning problem bw_large_d from the SHOP distribution.
+Test hatpehda on planning problem bw_large_d from the SHOP distribution.
 ****************************************
 """)
 
@@ -172,10 +172,10 @@ cause backtracking.
 import blocks_world_methods2
 print_methods()
 
-print("""\n=== In the next call to pyhop, it should backtrack:
+print("""\n=== In the next call to hatpehda, it should backtrack:
 the recursion depth should go up, then down, then up again.===\n""")
 
-# verbose=2 tells pyhop to print out a message at each recursion depth
+# verbose=2 tells hatpehda to print out a message at each recursion depth
 
 pyhop(state1,[('get', 'a')], verbose=2)
 

@@ -1,4 +1,4 @@
-import pyhop
+import hatpehda
 from copy import deepcopy
 
 from typing import Dict
@@ -35,7 +35,7 @@ def human_pick(agents, self_state, self_name, c):
         return False
 
 
-def robot_pick(agents: Dict[str, pyhop.Agent], self_state, self_name, c):
+def robot_pick(agents: Dict[str, hatpehda.Agent], self_state, self_name, c):
     if self_state.redLightOn:
         return False
     if self_name in self_state.isReachableBy[c] and self_state.isCarrying[self_name] is None:
@@ -97,8 +97,8 @@ def switch_off(agents, self_state, self_name):
         return False
 
 
-pyhop.declare_operators("human", human_pick, human_stack, switch_off_while_holding, switch_off)
-pyhop.declare_operators("robot", robot_pick, robot_stack)
+hatpehda.declare_operators("human", human_pick, human_stack, switch_off_while_holding, switch_off)
+hatpehda.declare_operators("robot", robot_pick, robot_stack)
 
 ### Methods definitions
 
@@ -115,7 +115,7 @@ def moveb_m_human(agents, self_state, self_name, c, goal):
         return [("human_pick", c), ("human_stack",)]
     return []
 
-def moveb_m_robot(agents, self_state: pyhop.State, self_name, c, goal):
+def moveb_m_robot(agents, self_state: hatpehda.State, self_name, c, goal):
     """
     This method implements the following block-stacking algorithm:
     If there's a block that can be moved to its final position, then
@@ -155,11 +155,11 @@ def switch_light_off_human(agents, self_state, self_name):
     else:
         return []
 
-pyhop.declare_methods("human", "move_one", moveb_m_human)
-pyhop.declare_methods("robot", "move_one", moveb_m_robot)
-pyhop.declare_methods("human", "stack", stack_human)
-pyhop.declare_methods("robot", "stack", stack_robot)
-pyhop.declare_methods("human", "switch_light_off", switch_light_off_human)
+hatpehda.declare_methods("human", "move_one", moveb_m_human)
+hatpehda.declare_methods("robot", "move_one", moveb_m_robot)
+hatpehda.declare_methods("human", "stack", stack_human)
+hatpehda.declare_methods("robot", "stack", stack_robot)
+hatpehda.declare_methods("human", "switch_light_off", switch_light_off_human)
 
 ### Triggers
 
@@ -168,11 +168,11 @@ def on_red_light(agents, self_state, self_name):
         return [("switch_light_off",)]
     return False
 
-pyhop.declare_trigger("human", on_red_light)
+hatpehda.declare_trigger("human", on_red_light)
 
-pyhop.print_operators()
+hatpehda.print_operators()
 
-pyhop.print_methods()
+hatpehda.print_methods()
 
 
 def make_reachable_by(state, cubes, agent):
@@ -186,7 +186,7 @@ def put_on_stack(state, cubes, is_stacked):
     state.isOnStack.update({c: is_stacked for c in cubes})
 
 
-state1_h = pyhop.State("state1_h")
+state1_h = hatpehda.State("state1_h")
 state1_h.cubes = ["cube1", "cube2", "cube3", "cube4", "cube5", "cube6"]
 make_reachable_by(state1_h, state1_h.cubes[:3], ["human"])
 make_reachable_by(state1_h, state1_h.cubes[3:], ["robot"])
@@ -198,21 +198,21 @@ state1_h.redLightCounter = 0
 
 state1_r = deepcopy(state1_h)
 
-goal1_h = pyhop.Goal("goal1_h")
+goal1_h = hatpehda.Goal("goal1_h")
 goal1_h.isOnStack = {"cube1": True, "cube2": True, "cube4": True}
 goal1_h.onStack = ["cube1", "cube4", "cube2"]
 goal1_r = deepcopy(goal1_h)
 
-pyhop.set_state("human", state1_h)
-pyhop.add_tasks("human", [('stack', goal1_h)])
-pyhop.set_state("robot", state1_r)
-pyhop.add_tasks("robot", [('stack', goal1_r)])
+hatpehda.set_state("human", state1_h)
+hatpehda.add_tasks("human", [('stack', goal1_h)])
+hatpehda.set_state("robot", state1_r)
+hatpehda.add_tasks("robot", [('stack', goal1_r)])
 
-pyhop.print_state(pyhop.agents["human"].state)
+hatpehda.print_state(hatpehda.agents["human"].state)
 
-plans = pyhop.multi_agent_planning(verbose=2)
+plans = hatpehda.multi_agent_planning(verbose=2)
 
-for ags in pyhop.ma_solutions:
+for ags in hatpehda.ma_solutions:
     print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
 
 print(plans)

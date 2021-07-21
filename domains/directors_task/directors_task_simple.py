@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-import pyhop
+import hatpehda
 
-from pyhop.standard_domains import generate_standard_domain
+from hatpehda.standard_domains import generate_standard_domain
 
 import rospy
 from std_msgs.msg import String
@@ -15,11 +15,11 @@ from functools import partial, update_wrapper
 from itertools import permutations
 from copy import deepcopy
 
-from pyhop.reg import REGHandler
+from hatpehda.reg import REGHandler
 
-from pyhop.ros import RosNode
+from hatpehda.ros import RosNode
 
-from pyhop import gui
+from hatpehda import gui
 
 import time
 
@@ -62,6 +62,7 @@ def same_last_tasks(plan, n, task=None):
     if len(plan) < n:
         return False
     last_tasks = [plan[-i].name for i in range(1, n + 1)]
+    print("Last tasks:", last_tasks)
     if task is not None and last_tasks[0] != task:
         return False
     return last_tasks.count(last_tasks[0]) == len(last_tasks)
@@ -71,7 +72,7 @@ def get_box_containing_cube(state, cube):
     box = None
     if cube in state.isInContainer and state.isInContainer[cube] != []:
         for container in state.isInContainer[cube]:
-            pyhop.print_state(state)
+            hatpehda.print_state(state)
             if container in state.individuals["DtBox"]:
                 box = container
                 break
@@ -124,7 +125,7 @@ def retrieve_state_from_ontology(agent_name, state):
             for indiv in indivs:
                 related = onto.individuals.getOn(indiv, rel)
                 getattr(state, rel)[indiv] = related
-    pyhop.print_state(state)
+    hatpehda.print_state(state)
     return state
 
 
@@ -139,8 +140,10 @@ def robot_tell_human_to_tidy(agents, self_state, self_name, human, cube, box):
     @param human:
     @param cube:
     @return:
+    @semantic_name: ask_to_put_pickable_in_container
     @ontology_type human: Human
     @ontology_type cube: Cube
+    @ontology_type box: Box
     """
     if human in self_state.isReachableBy[cube]:
         ctx = [("?0", "isAbove", "table_1")]
@@ -151,7 +154,7 @@ def robot_tell_human_to_tidy(agents, self_state, self_name, human, cube, box):
         cost = len(reg.sparqlResult)
         cost = 1
         print("Cube", cube, "costs", cost, "to disambiguate")
-        pyhop.add_tasks(human, [("tidy", cube, box)], agents)
+        hatpehda.add_tasks(human, [("tidy", cube, box)], agents)
         return agents
     else:
         print("cube", cube, "is not reachable by", human)
@@ -190,6 +193,7 @@ def human_pick_cube(agents, self_state, self_name, cube):
     @param self_name:
     @param cube:
     @return:
+    @semantic_name: pick_cube
     @ontology_type cube: Cube
     """
     if self_name in self_state.isReachableBy[cube] and self_state.isHolding[self_name] == []:
@@ -202,6 +206,15 @@ def human_pick_cube(agents, self_state, self_name, cube):
 
 
 def human_drop_cube(agents, self_state, self_name, box):
+    """
+
+    @param agents:
+    @param self_state:
+    @param self_name:
+    @param box:
+    @return:
+    @semantic_name: drop_in_container
+    """
     if len(self_state.isHolding[self_name]) == 1:
         for a in agents.values():
             cube = a.state.isHolding[self_name][0]
@@ -221,6 +234,8 @@ def robot_wait_human(agents, self_state, self_name, cube, box, human):
     if self_state.isHolding[human] == [] and box in self_state.isInContainer[cube]:
         return []
     if same_last_tasks(agents[self_name].plan, 3, "robot_wait_for_human_to_tidy"):
+        print("Same last tasks")
+        print(agents["human_0"].plan)
         return False
     return [("robot_wait_for_human_to_tidy",), ("wait_for_human", cube, box, human)]
 
@@ -245,7 +260,7 @@ def robot_tidy(agents, self_state, self_name, goal):
     @param self_name:
     @return:
     """
-    pyhop.print_goal(goal)
+    hatpehda.print_goal(goal)
     cubes_boxes_cost = []
     human = "human"
     for ag in agents:
@@ -273,6 +288,7 @@ def robot_tidy(agents, self_state, self_name, goal):
     if cubes_boxes_cost == []:
         return []
     cubes_boxes_cost = sorted(cubes_boxes_cost, key=lambda x: x[2])
+    print("cubes sorted", cubes_boxes_cost)
     for t in agents[self_name].tasks:
         print("Task: ", t.name, t.parameters)
         if t.name == "robot_congratulate" and t.parameters == (human,):
@@ -282,7 +298,7 @@ def robot_tidy(agents, self_state, self_name, goal):
 
 def human_tidy(agents, self_state, self_name, cube, box):
     """
-
+    @semantic_name:
     @param agents:
     @param self_state:
     @param self_name:
@@ -299,11 +315,11 @@ unctrl_methods = [("tidy", human_tidy)]
 
 
 def on_new_plan_req(ctrl_agents, unctrl_agent):
-    pyhop.reset_planner()
+    hatpehda.reset_planner()
 
     def update_agents(agents, operators, methods):
         for ag, tasks in agents.items():
-            state = pyhop.State(ag + "_init")
+            state = hatpehda.State(ag + "_init")
             state.types = {"Agent": ["isHolding"], "DtCube": ["isInContainer", "isHeldBy", "isReachableBy"],
                            "DtBox": [], "ReachableDtBox": [],
                            "ReceiverReachableDtBox": [],
@@ -311,35 +327,39 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
                            "DirectorReachableDtBox": [], "DtDirector": [], "DtReceiver": [], "DtThrowBox": []}
             state_filled = retrieve_state_from_ontology(ag, state)
 
+            #state_filled = state
+            #state_filled.individuals = {'DtCube': ["cube_BGTG", "cube_GBTG", "cube_GGTB"], 'DtBox': ["box_C1", "box_C2", 'box_C3']}
+            #state_filled.isInContainer = {'cube_BGTG': ["box_C1"], 'cube_GBTG': ['box_C2'], 'cube_GGTB': ['box_C3']}
+            #state_filled.isHeldBy = {'cube_BGTG': [], 'cube_GBTG': [], 'cube_GGTB': []}
+
             # TODO: remove
             state_filled.individuals["DtReceiver"] = ["human_0"]
             state_filled.isHolding = {next(iter(unctrl_agent)): []}
             state_filled.isReachableBy = {c: [next(iter(unctrl_agent))] for c in state_filled.individuals["DtCube"]}
 
-            pyhop.declare_operators(ag, *operators)
+            hatpehda.declare_operators(ag, *operators)
             for me in methods:
-                pyhop.declare_methods(ag, *me)
+                hatpehda.declare_methods(ag, *me)
 
-            pyhop.set_state(ag, state_filled)
-            pyhop.add_tasks(ag, [(t[0], *t[1]) for t in tasks])
+            hatpehda.set_state(ag, state_filled)
+            hatpehda.add_tasks(ag, [(t[0], *t[1]) for t in tasks])
 
     update_agents(ctrl_agents, ctrl_operators, ctrl_methods)
     update_agents(unctrl_agent, unctrl_operators, unctrl_methods)
-    # pyhop.print_state(pyhop.agents["robot"].state)
-    # print(pyhop.agents["robot"].tasks)
-    # pyhop.print_methods("robot")
-    # pyhop.print_methods("human")
+    # hatpehda.print_state(hatpehda.agents["robot"].state)
+    # print(hatpehda.agents["robot"].tasks)
+    # hatpehda.print_methods("robot")
+    # hatpehda.print_methods("human")
     sol = []
 
     # For now it only works with one controllable and one uncontrollable agents...
-    plans = pyhop.seek_plan_robot(pyhop.agents, next(iter(ctrl_agents)), sol,
-                                  uncontrollable_agent_name=next(iter(unctrl_agent)))
+    plans = hatpehda.seek_plan_robot(hatpehda.agents, next(iter(ctrl_agents)), sol,
+                                     uncontrollable_agent_name=next(iter(unctrl_agent)))
     print(len(sol))
     #regHandler.export_log("human_planning")
     gui.show_plan(sol, next(iter(ctrl_agents)), next(iter(unctrl_agent)))
     print(sol)
     rosnode.send_plan(sol, next(iter(ctrl_agents)), next(iter(unctrl_agent)))
-    regHandler.cleanup()
 
 
 if __name__ == "__main__":
@@ -348,11 +368,13 @@ if __name__ == "__main__":
     rosnode.wait_for_request()
 
     start = time.time()
-    # plans = pyhop.multi_agent_planning(verbose=0)
+    # plans = hatpehda.multi_agent_planning(verbose=0)
     end = time.time()
     regHandler.cleanup()
-    # print(len(pyhop.ma_solutions))
-    # for ags in pyhop.ma_solutions:
+
+
+    # print(len(hatpehda.ma_solutions))
+    # for ags in hatpehda.ma_solutions:
     #    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
     # print("Took", end - start, "seconds")
 

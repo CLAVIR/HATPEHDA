@@ -372,7 +372,9 @@ def get_human_next_actions(agents, agent_name, previous_action):
         next_actions = get_first_applicable_action(agents, agent_name, sols)
         if next_actions is False:
             newagents = copy.deepcopy(agents)
-            newagents[agent_name].plan.append(Operator("WAIT", [], agent_name,  None, 0, None))  # Default action
+            wait_action = Operator("WAIT", [], agent_name, None, 0, None)
+            wait_action.previous = previous_action
+            newagents[agent_name].plan.append(wait_action)  # Default action
             return [newagents]
         else:
             return sols
@@ -383,7 +385,9 @@ def get_human_next_actions(agents, agent_name, previous_action):
             raise Exception("Error during human HTN exploration")
         if sols == []:
             newagents = copy.deepcopy(agents)
-            newagents[agent_name].plan.append(Operator("WAIT", [], agent_name, None, 0, None))  # Default action
+            wait_action = Operator("WAIT", [], agent_name, None, 0, None)
+            wait_action.previous = previous_action
+            newagents[agent_name].plan.append(wait_action)  # Default action
             return [newagents]
         else:
             return sols

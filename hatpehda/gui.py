@@ -28,4 +28,4 @@ def show_plan(actions, controlable_agent, uncontrolable_agent, with_abstract=Tru
                     plotted_edge.add((action.id, action.previous.id))
                     dot.edge(str(action.previous.id), str(action.id), color="#FF5555")
             action = action.previous
-    dot.render("/home/gbuisan/test", view=True)
+    dot.render("graph", view=True)

@@ -17,6 +17,14 @@ def agent_plan_contains(plan, task_name):
             return True
     return False
 
+### Cost functions
+
+def cost_idle():
+    return 0.5
+
+def cost_pickup(weight):
+    return weight*2
+
 ### Primitive tasks
 
 def robot_pick_cube(agents, self_state, self_name, cube):
@@ -26,17 +34,20 @@ def robot_pick_cube(agents, self_state, self_name, cube):
         return False
     for ag in agents.values():
        ag.state.isHolding[self_name].append(cube)
-    return agents
+    return agents, cost_pickup(self_state.weights[cube])
 
 def robot_place_cube(agents, self_state, self_name):
     if self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == []:
         return False
     for ag in agents.values():
         ag.state.isPlaced.append(ag.state.isHolding[self_name].pop())
-    return agents
+    if "red_cube" in self_state.isPlaced:
+        for ag in agents.values():
+            ag.state.weights["blue_cube"] += 3
+    return agents, 1.0
 
 def robot_wait(agents, self_state, self_name):
-    return agents
+    return agents, 1.0
 
 
 def human_pick_cube(agents, self_state, self_name, cube):
@@ -46,14 +57,14 @@ def human_pick_cube(agents, self_state, self_name, cube):
         return False
     for ag in agents.values():
        ag.state.isHolding[self_name].append(cube)
-    return agents
+    return agents, 1.0
 
 def human_place_cube(agents, self_state, self_name):
     if self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == []:
         return False
     for ag in agents.values():
         ag.state.isPlaced.append(ag.state.isHolding[self_name].pop())
-    return agents
+    return agents, 1.0
 
 
 # As we don't know the agents name in advance, we store the operators here, until a ros plan call
@@ -90,8 +101,8 @@ def human_build(agents, self_state, self_name):
         tasks.append([("human_pick_cube", "red_cube"), ("human_place_cube",), ("human_build",)])
     if "green_cube" not in self_state.isPlaced and "green_cube" not in self_state.isHolding[self_name] and "green_cube" not in self_state.isHolding["robot"]:
         tasks.append([("human_pick_cube", "green_cube"), ("human_place_cube",), ("human_build",)])
-    if "blue_cube" not in self_state.isPlaced and "blue_cube" not in self_state.isHolding[self_name] and "blue_cube" not in self_state.isHolding["robot"]:
-        tasks.append([("human_pick_cube", "blue_cube"), ("human_place_cube",), ("human_build",)])
+    # if "blue_cube" not in self_state.isPlaced and "blue_cube" not in self_state.isHolding[self_name] and "blue_cube" not in self_state.isHolding["robot"]:
+        # tasks.append([("human_pick_cube", "blue_cube"), ("human_place_cube",), ("human_build",)])
     return tasks
 
 def human_picking(agents, self_state, self_name):
@@ -105,15 +116,17 @@ def human_picking(agents, self_state, self_name):
 ctrl_methods = [("robot_build", robot_build)]
 unctrl_methods = [("human_build", human_build), ("human_picking", human_picking)]
 
-
-
-
+######################################################
+######################## MAIN ########################
+######################################################
 
 if __name__ == "__main__":
     state = hatpehda.State("robot_init")
     state.types = {"Agent": ["isHolding"]}
     state.isHolding = {"human": [], "robot": []}
     state.isPlaced = []
+    state.individuals = {"Cube": ["red_cube", "green_cube", "blue_cube"]}
+    state.weights = {"red_cube": 1, "green_cube": 2, "blue_cube": 3}
 
     # ROBOT
     hatpehda.declare_operators("robot", *ctrl_operators)
@@ -121,7 +134,6 @@ if __name__ == "__main__":
         hatpehda.declare_methods("robot", *me)
     hatpehda.set_state("robot", state)
     hatpehda.add_tasks("robot", [("robot_build",)])
-    # hatpehda.add_tasks("robot", [("robot_wait",), ("robot_build",)])
 
     # HUMAN
     hatpehda.declare_operators("human", *unctrl_operators)
@@ -130,17 +142,16 @@ if __name__ == "__main__":
     human_state = deepcopy(state)
     human_state.__name__ = "human_init"
     hatpehda.set_state("human", human_state)
-    hatpehda.add_tasks("human", [("human_picking",)])
-    # hatpehda.add_tasks("human", [("human_pick_cube","red_cube")])
-    # hatpehda.add_tasks("human", [("human_build",)])
+    hatpehda.add_tasks("human", [("human_build",)])
 
+    hatpehda.set_idle_cost_function(cost_idle)
 
     sols = []
     fails = []
     hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
     end = time.time()
 
-    print(len(sols))
+    print("len sols = {}".format(len(sols)))
 
     gui.show_plan(sols, "robot", "human", with_abstract=True)
     #rosnode = ros.RosNode.start_ros_node("planner", lambda x: print("plop"))

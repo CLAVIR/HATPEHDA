@@ -3,21 +3,12 @@
 import hatpehda
 from copy import deepcopy
 from hatpehda import gui
-#from hatpehda import ros
-
-
-
 import time
 
-### Helpers
 
-def agent_plan_contains(plan, task_name):
-    for p in plan:
-        if p.name == task_name:
-            return True
-    return False
-
-### Cost functions
+######################################################
+################### Cost functions ###################
+######################################################
 
 def cost_idle():
     return 0.5
@@ -25,8 +16,13 @@ def cost_idle():
 def cost_pickup(weight):
     return weight*2
 
-### Primitive tasks
+######################################################
+################### Primitive tasks ##################
+######################################################
 
+###########
+## ROBOT ##
+###########
 def robot_pick_cube(agents, self_state, self_name, cube):
     if self_state.isHolding[self_name] is not None and self_state.isHolding[self_name] != []:
         return False
@@ -49,7 +45,9 @@ def robot_place_cube(agents, self_state, self_name):
 def robot_wait(agents, self_state, self_name):
     return agents, 1.0
 
-
+###########
+## HUMAN ##
+###########
 def human_pick_cube(agents, self_state, self_name, cube):
     if self_state.isHolding[self_name] is not None and self_state.isHolding[self_name] != []:
         return False
@@ -67,22 +65,16 @@ def human_place_cube(agents, self_state, self_name):
     return agents, 1.0
 
 
-# As we don't know the agents name in advance, we store the operators here, until a ros plan call
 ctrl_operators = [robot_pick_cube, robot_place_cube, robot_wait]
 unctrl_operators = [human_pick_cube, human_place_cube]
 
-#print(",\n".join(["\"{}\": 1.0".format(f.__name__) for f in ctrl_operators + unctrl_operators]))
-cost_dict = {
-    "robot_pick_cube": 1.0,
-    "robot_place_cube": 1.0,
-    "robot_wait": 0.0,
-    "human_pick_cube": 1.0,
-    "human_place_cube": 1.0,
-    "IDLE": 0.0
-}
+######################################################
+################### Abstract Tasks ###################
+######################################################
 
-### Abstract Tasks
-
+###########
+## ROBOT ##
+###########
 @hatpehda.multi_decomposition
 def robot_build(agents, self_state, self_name):
     tasks=[]
@@ -94,6 +86,9 @@ def robot_build(agents, self_state, self_name):
         tasks.append([("robot_pick_cube", "blue_cube"), ("robot_place_cube",), ("robot_build",)])
     return tasks
 
+###########
+## HUMAN ##
+###########
 @hatpehda.multi_decomposition
 def human_build(agents, self_state, self_name):
     tasks=[]
@@ -112,7 +107,6 @@ def human_picking(agents, self_state, self_name):
         return []
     return [("human_pick_cube", "red_cube")]
 
-# We don't know the agents name in advance so we store them here, until we can add the proper agents
 ctrl_methods = [("robot_build", robot_build)]
 unctrl_methods = [("human_build", human_build), ("human_picking", human_picking)]
 
@@ -121,6 +115,7 @@ unctrl_methods = [("human_build", human_build), ("human_picking", human_picking)
 ######################################################
 
 if __name__ == "__main__":
+    # Initial state
     state = hatpehda.State("robot_init")
     state.types = {"Agent": ["isHolding"]}
     state.isHolding = {"human": [], "robot": []}
@@ -128,14 +123,17 @@ if __name__ == "__main__":
     state.individuals = {"Cube": ["red_cube", "green_cube", "blue_cube"]}
     state.weights = {"red_cube": 1, "green_cube": 2, "blue_cube": 3}
 
-    # ROBOT
+    # Set idle cost function
+    hatpehda.set_idle_cost_function(cost_idle)
+
+    # Robot
     hatpehda.declare_operators("robot", *ctrl_operators)
     for me in ctrl_methods:
         hatpehda.declare_methods("robot", *me)
     hatpehda.set_state("robot", state)
     hatpehda.add_tasks("robot", [("robot_build",)])
 
-    # HUMAN
+    # Human
     hatpehda.declare_operators("human", *unctrl_operators)
     for me in unctrl_methods:
         hatpehda.declare_methods("human", *me)
@@ -144,8 +142,8 @@ if __name__ == "__main__":
     hatpehda.set_state("human", human_state)
     hatpehda.add_tasks("human", [("human_build",)])
 
-    hatpehda.set_idle_cost_function(cost_idle)
 
+    # Planning #
     sols = []
     fails = []
     hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
@@ -154,20 +152,8 @@ if __name__ == "__main__":
     print("len sols = {}".format(len(sols)))
 
     gui.show_plan(sols, "robot", "human", with_abstract=True)
-    #rosnode = ros.RosNode.start_ros_node("planner", lambda x: print("plop"))
-    #time.sleep(5)
-    #rosnode.send_plan(sols, "robot", "human")
     input()
-    cost, plan_root = hatpehda.select_conditional_plan(sols, "robot", "human", cost_dict)
+    cost, plan_root = hatpehda.select_conditional_plan(sols, "robot", "human")
 
     gui.show_plan(hatpehda.get_last_actions(plan_root), "robot", "human", with_abstract=True)
-    #n.send_plan(hatpehda.get_last_actions(plan_root), "robot", "human")
     print("policy cost", cost)
-
-    # print(len(hatpehda.ma_solutions))
-    # for ags in hatpehda.ma_solutions:
-    #    print("Plan :", ags["robot"].global_plan, "with cost:", ags["robot"].global_plan_cost)
-    # print("Took", end - start, "seconds")
-
-    # regHandler.export_log("robot_planning")
-    # regHandler.cleanup()

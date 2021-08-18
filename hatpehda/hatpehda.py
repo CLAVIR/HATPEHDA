@@ -528,7 +528,7 @@ def _backtrack_plan(last_action):
         action = action.previous
 
 
-def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict):
+def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict={}):
     def explore_policy(agents, action, cost):
         new_agents = copy.deepcopy(agents) # check if needed
         cost_op = 0.0

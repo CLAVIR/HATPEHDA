@@ -274,22 +274,44 @@ def fixed_cost(cost):
 def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
     if fails is None:
         fails = []
+
+    # If robot agenda is empty
     if agents[agent_name].tasks == []:
         _backtrack_plan(agents[uncontrollable_agent_name].plan[-1])
         sols.append(agents[uncontrollable_agent_name].plan[-1])
+        print("=> BRANCH OVER <=")
         return True
+
+    # Else, handle first task to do in the robot agenda
     task = agents[agent_name].tasks[0]
+
+    print("\nagenda = {}".format(agents[agent_name].tasks))
+    print("task name={}".format(task.name))
+
+    # If the first task is an operator known by the robot
     if task.name in agents[agent_name].operators:
+        print("is an operator")
+
+        # CHECK IF FEASIBLE, AND IF SO THEN ADD IT TO THE ROBOT PLAN
+        # Get the operator and tries to apply it on a copy of agents
         operator = agents[agent_name].operators[task.name]
         newagents = copy.deepcopy(agents)
         result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
+
+        # if not feasible
         if result == False:
             #print(task.name + " not feasible...")
             return False
+
+        # else, if it's feasible
+        # remove the task from the robot agenda and put it in the robot plan
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
         action = Operator.copy_new_id(task)
         action.previous = previous_action
         newagents[agent_name].plan.append(action)
+
+        # CHECK TRIGGERS OF OTHER AGENTS
+        # check the triggers of every other agent that the robot
         for a in agents:
             if a == agent_name:
                 continue
@@ -310,18 +332,28 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
                             )
                     newagents[a].tasks = triggered_subtasks + newagents[a].tasks
                     break
+
+        # MANAGE NEXT POSSIBLE HUMAN ACTION, PLAN WITH THEM
+        # Get the next possible actions of the human
         new_possible_agents = get_human_next_actions(newagents, uncontrollable_agent_name, previous_action=action)
         if new_possible_agents == False:
             # No action is feasible for the human
             #print("No action feasible for the human")
             return False
+
+        # For each possible action of the human, plan for the robot
         for ag in new_possible_agents:
             seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action=ag[uncontrollable_agent_name].plan[-1])
-        #print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
+        # print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
         return True
+
+    # Else if it's in the known methods of the robot
     if task.name in agents[agent_name].methods:
+        print("is a method")
+        # get the decompositions of the method
         decompos = agents[agent_name].methods[task.name]
         reachable_agents = []
+        print("decompos= {}".format(decompos))
         for i, decompo in enumerate(decompos):
             newagentsdecompo = copy.deepcopy(agents)
             result = decompo(newagentsdecompo, newagentsdecompo[agent_name].state, agent_name, *task.parameters)
@@ -329,15 +361,23 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
                 raise TypeError(
                     "Error: the decomposition function: {} of task {} has returned None. It should return a list or False.".format(decompo.__name__,  task.name))
             if result != False:
-                subtaskss = None
+                multi_decompos = None
+                print("result=")
+                print(result)
                 if result != [] and isinstance(result[0], str) and result[0] == "MULTI":
-                    subtaskss = result[1]
+                    multi_decompos = result[1]
                 else:
-                    subtaskss = [result]
-                for subtasks in subtaskss:
+                    multi_decompos = [result]
+                print("multi_decompos=")
+                print(multi_decompos)
+                for multi_decompo in multi_decompos:
+                    print("multi_decompo=")
+                    print(multi_decompo)
                     newagents = copy.deepcopy(newagentsdecompo)
                     subtasks_obj = []
-                    for sub in subtasks:
+                    for sub in multi_decompo:
+                        print("sub=")
+                        print(sub)
                         if sub[0] in agents[agent_name].methods:
                             subtasks_obj.append(AbstractTask(sub[0], sub[1:], agent_name, task, i, [], len(agents[agent_name].methods[sub[0]])))
                         elif sub[0] in agents[agent_name].operators:
@@ -348,7 +388,8 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
                                 "returned a subtask '{}' which is neither in the methods nor in the operators "
                                 "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
                             )
-
+                    print("subtasks_obj=")
+                    print(subtasks_obj)
                     newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
                     reachable_agents.append(newagents)
         if reachable_agents == []:
@@ -360,6 +401,7 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
             for ag in reachable_agents:
                 seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
             return True
+
     return False
 
 
@@ -505,6 +547,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
             action.next[0].predecessor = action
             return min_cost
 
+    # Add begin action for each solution
     begin_action = Operator("BEGIN", [], "human", None, None, None)
     cost_dict["BEGIN"] = 0.0
     for s in sols:
@@ -512,8 +555,11 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
         if s.name != "BEGIN":
             s.predecessor = begin_action
             begin_action.next.append(first_action)
+
+    # Explore policies
     act = copy.deepcopy(begin_action)
     cost = explore_policy(act, 0)
+
     return cost, act
 
 

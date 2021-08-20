@@ -394,7 +394,7 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
                     multi_decompos = [result]
                 # print("multi_decompos={}".format(multi_decompos))
                 for multi_decompo in multi_decompos:
-                    print("multi_decompo={}".format(multi_decompo))
+                    # print("multi_decompo={}".format(multi_decompo))
                     newagents = copy.deepcopy(newagentsdecompo)
                     subtasks_obj = []
                     for sub in multi_decompo:
@@ -619,7 +619,8 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
         first_action = get_first_action(s)
         if first_action.name != "BEGIN":
             first_action.predecessor = begin_action
-            begin_action.next.append(first_action)
+            if first_action not in begin_action.next:
+                begin_action.next.append(first_action)
 
     # Explore policies
     act = copy.deepcopy(begin_action)

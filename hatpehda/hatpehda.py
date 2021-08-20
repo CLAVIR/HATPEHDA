@@ -272,6 +272,11 @@ def fixed_cost(cost):
 # The actual planner
 
 def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
+    result = _seek_plan_robot(agents, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
+    _merge_sols(sols)
+    return result
+
+def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
     if fails is None:
         fails = []
     if agents[agent_name].tasks == []:
@@ -479,7 +484,21 @@ def _backtrack_plan(last_action):
             action.previous.next.append(action)
         action = action.previous
 
-
+def _merge_sols(sols):
+    tasks = {}
+    for sol in sols:
+        primitive = sol
+        while primitive.previous is not None:
+            if primitive.previous.id not in tasks:
+                tasks[primitive.previous.id] = primitive.previous
+                prev = primitive.previous
+            else:
+                prev = primitive.previous
+                primitive.previous = tasks[primitive.previous.id]
+                if primitive.id not in [t.id for t in tasks[primitive.previous.id].next]:
+                    tasks[primitive.previous.id].next.append(primitive)
+            primitive = prev
+    return sols
 
 
 def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict):

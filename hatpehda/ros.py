@@ -3,7 +3,7 @@ import json
 
 from planner_msgs.msg import PlanRequest, Plan, AgentTasksRequest, Task
 
-from . import Goal
+from .hatpehda import Goal
 
 class RosNode:
     def __init__(self, name, on_new_request_cb):
@@ -116,10 +116,3 @@ class RosNode:
                     why = why.why
                 action = action.previous
         self.plan_pub.publish(msg)
-
-
-
-
-
-def start_ros_node(node_name="planner"):
-    rospy.init_node("planner")

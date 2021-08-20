@@ -550,7 +550,9 @@ def _merge_sols(sols):
     return sols
 
 def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict={}):
+    branch_id = 1
     def explore_policy(agents, action, cost):
+        nonlocal branch_id
         new_agents = copy.deepcopy(agents) # check if needed
 
         # Virtually apply the action and calculate its cost
@@ -584,18 +586,29 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
 
         # Explore
         current_cost = cost + cost_op + undesired_state_penalty
+        print("{}{} id={} cost={} state_penalty={} total={}".format(action.name, action.parameters, action.id, cost_op, undesired_state_penalty, current_cost))
 
         if action.next is None or action.next == []:
             # check undesired sequence => add penaly cost for each one found
             # backtrack, and give to function only one branch
             # plan starting from first action with next action linked for this specific branch
             undesired_sequence_penalty = 0.0
-            # for undesired_sequence_check in undesired_sequence_functions:
-            #     undesired_sequence_penalty += undesired_sequence_check(plan)
+            for undesired_sequence_check in undesired_sequence_functions:
+                undesired_sequence_penalty += undesired_sequence_check(action)
+            print("branch ({}) seq_penalty={} total_cost={}\n".format(branch_id, undesired_sequence_penalty, current_cost))
+            branch_id += 1
             return current_cost + undesired_sequence_penalty
 
         if action.agent == controllable_agent_name:
             total_cost = 0
+            # FUTURE WORK:
+            # Rather than just a mean, do a small optimization scheme
+            # that takes into account the average cost but also
+            # the worst and best cost possible
+            # For example if we have 3 possible human choices leading to
+            # 2 very good scenario (small costs) but 1 really really bad (huge cost)
+            # we can maybe bet on the rationnality of the human to not choose the worst action
+            # and bet on the 2 very good scenarios
             for successor in action.next:
                 total_cost += explore_policy(new_agents, successor, current_cost)
             return total_cost / len(action.next)

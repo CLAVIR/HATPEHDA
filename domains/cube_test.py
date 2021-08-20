@@ -150,6 +150,15 @@ if __name__ == "__main__":
     end = time.time()
 
     print("len sols = {}".format(len(sols)))
+    for i, s in enumerate(sols):
+        print("\n({})".format(i+1))
+        while s is not None:
+            print("{} : {}{}".format(s.id, s.name, s.parameters), end='')
+            if s.previous is not None:
+                print(", previous :{}{}".format(s.previous.name, s.previous.parameters), end='')
+            if s.next is not None:
+                print(", next:{}".format(s.next))
+            s = s.previous
 
     gui.show_plan(sols, "robot", "human", with_abstract=True)
     input()

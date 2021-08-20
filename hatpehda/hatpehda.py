@@ -67,7 +67,7 @@ class Operator(Task):
         return new
 
     def __repr__(self):
-        return str((self.name, *self.parameters))
+        return str((self.id, self.name, *self.parameters))
 
 class AbstractTask(Task):
     def __init__(self, name, parameters, agent, why, decompo_number, how, number_of_decompo):
@@ -290,6 +290,11 @@ undesired_sequence_functions = []
 # The actual planner
 
 def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
+    result = _seek_plan_robot(agents, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
+    _merge_sols(sols)
+    return result
+
+def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
     if fails is None:
         fails = []
 
@@ -528,6 +533,21 @@ def _backtrack_plan(last_action):
             action.previous.next.append(action)
         action = action.previous
 
+def _merge_sols(sols):
+    tasks = {}
+    for sol in sols:
+        primitive = sol
+        while primitive.previous is not None:
+            if primitive.previous.id not in tasks:
+                tasks[primitive.previous.id] = primitive.previous
+                prev = primitive.previous
+            else:
+                prev = primitive.previous
+                primitive.previous = tasks[primitive.previous.id]
+                if primitive.id not in [t.id for t in tasks[primitive.previous.id].next]:
+                    tasks[primitive.previous.id].next.append(primitive)
+            primitive = prev
+    return sols
 
 def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict={}):
     def explore_policy(agents, action, cost):
@@ -574,13 +594,13 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
             #     undesired_sequence_penalty += undesired_sequence_check(plan)
             return current_cost + undesired_sequence_penalty
 
-        if action.agent == "robot":
+        if action.agent == controllable_agent_name:
             total_cost = 0
             for successor in action.next:
                 total_cost += explore_policy(new_agents, successor, current_cost)
             return total_cost / len(action.next)
 
-        elif action.agent == "human":
+        elif action.agent == uncontrollable_agent_name:
             min_cost = explore_policy(new_agents, action.next[0], current_cost)
             min_i_cost = 0
             for i, successor in enumerate(action.next[1:]):
@@ -597,8 +617,8 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
     cost_dict["BEGIN"] = 0.0
     for s in sols:
         first_action = get_first_action(s)
-        if s.name != "BEGIN":
-            s.predecessor = begin_action
+        if first_action.name != "BEGIN":
+            first_action.predecessor = begin_action
             begin_action.next.append(first_action)
 
     # Explore policies

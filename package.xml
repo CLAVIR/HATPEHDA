@@ -1,8 +1,8 @@
 <package format="2">
-  <name>pyhop</name>
+  <name>hatpehda</name>
   <version>1.0.0</version>
   <description>
-    Pyhop dual HTN planner
+    hatpehda dual HTN planner
   </description>
   <maintainer email="buisanguilhem@gmail.com">Guilhem Buisan</maintainer>
   <license>BSD</license>

@@ -11,10 +11,29 @@ import time
 ######################################################
 
 def cost_idle():
-    return 0.5
+    return 0.0
 
 def cost_pickup(weight):
     return weight*2
+
+def undesired_state_1(agents):
+    penalty = 0.0
+    # if red and green held at the same time, even by different agents
+    if(("red_cube" in agents["robot"].state.isHolding["robot"] or "red_cube" in agents["robot"].state.isHolding["human"])
+        and ("green_cube" in agents["robot"].state.isHolding["robot"] or "green_cube" in agents["robot"].state.isHolding["human"])):
+        penalty = 10.0
+
+    # if False:
+    return penalty
+
+
+def undesired_sequence_1(last_action):
+    penalty = 0.0
+
+    if False:
+        penalty = 5.0
+
+    return penalty
 
 ######################################################
 ################### Primitive tasks ##################
@@ -96,8 +115,8 @@ def human_build(agents, self_state, self_name):
         tasks.append([("human_pick_cube", "red_cube"), ("human_place_cube",), ("human_build",)])
     if "green_cube" not in self_state.isPlaced and "green_cube" not in self_state.isHolding[self_name] and "green_cube" not in self_state.isHolding["robot"]:
         tasks.append([("human_pick_cube", "green_cube"), ("human_place_cube",), ("human_build",)])
-    # if "blue_cube" not in self_state.isPlaced and "blue_cube" not in self_state.isHolding[self_name] and "blue_cube" not in self_state.isHolding["robot"]:
-        # tasks.append([("human_pick_cube", "blue_cube"), ("human_place_cube",), ("human_build",)])
+    if "blue_cube" not in self_state.isPlaced and "blue_cube" not in self_state.isHolding[self_name] and "blue_cube" not in self_state.isHolding["robot"]:
+        tasks.append([("human_pick_cube", "blue_cube"), ("human_place_cube",), ("human_build",)])
     return tasks
 
 def human_picking(agents, self_state, self_name):
@@ -123,8 +142,10 @@ if __name__ == "__main__":
     state.individuals = {"Cube": ["red_cube", "green_cube", "blue_cube"]}
     state.weights = {"red_cube": 1, "green_cube": 2, "blue_cube": 3}
 
-    # Set idle cost function
+    # Set cost functions
     hatpehda.set_idle_cost_function(cost_idle)
+    hatpehda.set_undesired_state_functions([undesired_state_1])
+    hatpehda.set_undesired_sequence_functions([undesired_sequence_1])
 
     # Robot
     hatpehda.declare_operators("robot", *ctrl_operators)
@@ -143,12 +164,10 @@ if __name__ == "__main__":
     hatpehda.add_tasks("human", [("human_build",)])
 
 
-    # Planning #
+    # Seek all possible plans #
     sols = []
     fails = []
     hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
-    end = time.time()
-
     print("len sols = {}".format(len(sols)))
     for i, s in enumerate(sols):
         print("\n({})".format(i+1))
@@ -160,9 +179,10 @@ if __name__ == "__main__":
                 print(", next:{}".format(s.next))
             s = s.previous
 
-    gui.show_plan(sols, "robot", "human", with_abstract=True)
+    gui.show_plan(sols, "robot", "human", with_abstract=False)
     input()
-    cost, plan_root = hatpehda.select_conditional_plan(sols, "robot", "human")
 
-    gui.show_plan(hatpehda.get_last_actions(plan_root), "robot", "human", with_abstract=True)
-    print("policy cost", cost)
+    # Select the best plan from the ones found above #
+    cost, plan_root = hatpehda.select_conditional_plan(sols, "robot", "human")
+    print("\npolicy cost", cost)
+    gui.show_plan(hatpehda.get_last_actions(plan_root), "robot", "human", with_abstract=False)

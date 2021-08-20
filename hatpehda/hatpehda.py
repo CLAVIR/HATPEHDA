@@ -68,7 +68,7 @@ class Operator(Task):
         return new
 
     def __repr__(self):
-        return str((self.name, *self.parameters))
+        return str((self.id, self.name, *self.parameters))
 
 class AbstractTask(Task):
     def __init__(self, name, parameters, agent, why, decompo_number, how, number_of_decompo):

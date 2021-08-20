@@ -487,13 +487,13 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
         if action.next is None or action.next == []:
             return cost + cost_dict[action.name]
 
-        if action.agent == "robot":
+        if action.agent == controllable_agent_name:
             total_cost = 0
             for successor in action.next:
                 total_cost += explore_policy(successor, cost + cost_dict[action.name])
             return total_cost / len(action.next)
 
-        elif action.agent == "human":
+        elif action.agent == uncontrollable_agent_name:
             min_cost = explore_policy(action.next[0], cost + cost_dict[action.name])
             min_i_cost = 0
             for i, successor in enumerate(action.next[1:]):
@@ -509,8 +509,8 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
     cost_dict["BEGIN"] = 0.0
     for s in sols:
         first_action = get_first_action(s)
-        if s.name != "BEGIN":
-            s.predecessor = begin_action
+        if first_action.name != "BEGIN":
+            first_action.predecessor = begin_action
             begin_action.next.append(first_action)
     act = copy.deepcopy(begin_action)
     cost = explore_policy(act, 0)

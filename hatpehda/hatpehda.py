@@ -59,7 +59,6 @@ class Operator(Task):
     def __init__(self, name, parameters, agent, why, decompo_number, function):
         super().__init__(name, parameters, why, decompo_number, agent)
         self.function = function
-        self.cost = 0
 
     @staticmethod
     def copy_new_id(other):
@@ -264,19 +263,28 @@ def print_methods(agent=None):
 
 def default_cost_idle_function():
     return 0.0
+def set_idle_cost_function(idle_function):
+    global idle_cost_function
+    idle_cost_function = idle_function
 idle_cost_function = default_cost_idle_function
 
 def default_cost_wait_function():
     return 0.0
-wait_cost_function = default_cost_wait_function
-
-def set_idle_cost_function(idle_function):
-    global idle_cost_function
-    idle_cost_function = idle_function
-
 def set_wait_cost_function(wait_function):
     global wait_cost_function
     wait_cost_function = wait_function
+wait_cost_function = default_cost_wait_function
+
+
+def set_undesired_state_functions(functions):
+    global undesired_state_functions
+    undesired_state_functions = functions
+undesired_state_functions = []
+
+def set_undesired_sequence_functions(functions):
+    global undesired_sequence_functions
+    undesired_sequence_functions = functions
+undesired_sequence_functions = []
 
 ############################################################
 # The actual planner
@@ -295,8 +303,10 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
     # Else, handle first task to do in the robot agenda
     task = agents[agent_name].tasks[0]
 
-    # print("\nagenda = {}".format(agents[agent_name].tasks))
-    # print("task name={}".format(task.name))
+    # print("\nagenda = ", end='')
+    # for taski in agents[agent_name].tasks:
+        # print(" {}{},".format(taski.name, taski.parameters), end='')
+    # print("\ntreating task name={}".format(task.name))
 
     # If the first task is an operator known by the robot
     if task.name in agents[agent_name].operators:
@@ -372,22 +382,18 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
                     "Error: the decomposition function: {} of task {} has returned None. It should return a list or False.".format(decompo.__name__,  task.name))
             if result != False:
                 multi_decompos = None
-                # print("result=")
-                # print(result)
+                # print("result={}".format(result))
                 if result != [] and isinstance(result[0], str) and result[0] == "MULTI":
                     multi_decompos = result[1]
                 else:
                     multi_decompos = [result]
-                # print("multi_decompos=")
-                # print(multi_decompos)
+                # print("multi_decompos={}".format(multi_decompos))
                 for multi_decompo in multi_decompos:
-                    # print("multi_decompo=")
-                    # print(multi_decompo)
+                    print("multi_decompo={}".format(multi_decompo))
                     newagents = copy.deepcopy(newagentsdecompo)
                     subtasks_obj = []
                     for sub in multi_decompo:
-                        # print("sub=")
-                        # print(sub)
+                        # print("sub={}".format(sub))
                         if sub[0] in agents[agent_name].methods:
                             subtasks_obj.append(AbstractTask(sub[0], sub[1:], agent_name, task, i, [], len(agents[agent_name].methods[sub[0]])))
                         elif sub[0] in agents[agent_name].operators:
@@ -398,8 +404,7 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
                                 "returned a subtask '{}' which is neither in the methods nor in the operators "
                                 "of agent '{}'".format(decompo.__name__, task.name, sub[0], agent_name)
                             )
-                    # print("subtasks_obj=")
-                    # print(subtasks_obj)
+                    # print("subtasks_obj={}".format(subtasks_obj))
                     newagents[agent_name].tasks = subtasks_obj + newagents[agent_name].tasks[1:]
                     reachable_agents.append(newagents)
         if reachable_agents == []:
@@ -413,7 +418,6 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
             return True
 
     return False
-
 
 def get_human_next_actions(agents, agent_name, previous_action):
     global human_prediction_type
@@ -441,7 +445,6 @@ def get_human_next_actions(agents, agent_name, previous_action):
             return [newagents]
         else:
             return sols
-
 
 def get_all_applicable_actions(agents, agent_name, solutions, previous_action):
     if agents[agent_name].tasks == []:
@@ -515,10 +518,8 @@ def get_all_applicable_actions(agents, agent_name, solutions, previous_action):
     #print("looking for:", task.name, "not a task nor an action of agent", agent_name)
     return False
 
-
 def get_first_applicable_action(agents, agent_name, solutions):
     raise NotImplementedError("Not implemented yet.")
-
 
 def _backtrack_plan(last_action):
     action = last_action
@@ -531,8 +532,9 @@ def _backtrack_plan(last_action):
 def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict={}):
     def explore_policy(agents, action, cost):
         new_agents = copy.deepcopy(agents) # check if needed
-        cost_op = 0.0
 
+        # Virtually apply the action and calculate its cost
+        cost_op = 0.0
         if action.name != "BEGIN":
             if action.name == "IDLE":
                 cost_op = idle_cost_function()
@@ -550,20 +552,39 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
                 else:
                     raise TypeError("Conditional plan selection failed operator \"{}\" from agent \"{}\" returned neither a dict nor a tuple. If given a cost_dict it has to return either a dictionary of agents or else a tuple with the agents and a cost".format(action.name, action.agent))
 
+        # check undesired states => add penalty cost for each one found
+        # - Apply one after another user defined functions
+        # List of undesired_state_checking_functions, declared by the user
+        # Can check only robot state or every agent state
+        # We do not check if initial state is undesired, only after first action
+        undesired_state_penalty = 0.0
+        for undesired_state_check in undesired_state_functions:
+            undesired_state_penalty += undesired_state_check(new_agents)
+
+
+        # Explore
+        current_cost = cost + cost_op + undesired_state_penalty
+
         if action.next is None or action.next == []:
-            return cost + cost_op
+            # check undesired sequence => add penaly cost for each one found
+            # backtrack, and give to function only one branch
+            # plan starting from first action with next action linked for this specific branch
+            undesired_sequence_penalty = 0.0
+            # for undesired_sequence_check in undesired_sequence_functions:
+            #     undesired_sequence_penalty += undesired_sequence_check(plan)
+            return current_cost + undesired_sequence_penalty
 
         if action.agent == "robot":
             total_cost = 0
             for successor in action.next:
-                total_cost += explore_policy(new_agents, successor, cost + cost_op)
+                total_cost += explore_policy(new_agents, successor, current_cost)
             return total_cost / len(action.next)
 
         elif action.agent == "human":
-            min_cost = explore_policy(new_agents, action.next[0], cost + cost_op)
+            min_cost = explore_policy(new_agents, action.next[0], current_cost)
             min_i_cost = 0
             for i, successor in enumerate(action.next[1:]):
-                new_cost = explore_policy(new_agents, successor, cost + cost_op)
+                new_cost = explore_policy(new_agents, successor, current_cost)
                 if new_cost < min_cost:
                     min_i_cost = i + 1
                     min_cost = new_cost
@@ -585,7 +606,6 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
     cost = explore_policy(agents, act, 0)
 
     return cost, act
-
 
 def get_first_action(last_action):
         action = last_action

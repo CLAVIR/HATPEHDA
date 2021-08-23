@@ -647,9 +647,9 @@ def _backtrack_plan_one_branch(action, next):
     if action is not None:
         action.next = next
         if action.previous is not None:
-            return _backtrack_plan_bis(action.previous, action)
+            return _backtrack_plan_one_branch(action.previous, action)
         else:
-            return _backtrack_plan_bis(None, action)
+            return _backtrack_plan_one_branch(None, action)
     else:
         return next
 

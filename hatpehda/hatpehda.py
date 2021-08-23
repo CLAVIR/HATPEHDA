@@ -573,31 +573,33 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
                     cost_op = result[1]
                 else:
                     raise TypeError("Conditional plan selection failed operator \"{}\" from agent \"{}\" returned neither a dict nor a tuple. If given a cost_dict it has to return either a dictionary of agents or else a tuple with the agents and a cost".format(action.name, action.agent))
+        cost += cost_op
 
-        # check undesired states => add penalty cost for each one found
-        # - Apply one after another user defined functions
-        # List of undesired_state_checking_functions, declared by the user
-        # Can check only robot state or every agent state
-        # We do not check if initial state is undesired, only after first action
+        # Check undesired states
         undesired_state_penalty = 0.0
         for undesired_state_check in undesired_state_functions:
             undesired_state_penalty += undesired_state_check(new_agents)
-
+        cost += undesired_state_penalty
 
         # Explore
-        current_cost = cost + cost_op + undesired_state_penalty
-        print("{}{} id={} cost={} state_penalty={} total={}".format(action.name, action.parameters, action.id, cost_op, undesired_state_penalty, current_cost))
+        print("{}{}".format(action.name, action.parameters))
+        print(" -> id={} cost={} state_penalty={} total={}".format(action.id, cost_op, undesired_state_penalty, cost))
 
         if action.next is None or action.next == []:
-            # check undesired sequence => add penaly cost for each one found
-            # backtrack, and give to function only one branch
-            # plan starting from first action with next action linked for this specific branch
+
+            # Check undesired sequence
             undesired_sequence_penalty = 0.0
+
+            last_action = copy.deepcopy(action)
+            first_action = _backtrack_plan_one_branch(last_action, None) # set the action.next to only the specific action of this branch
+
             for undesired_sequence_check in undesired_sequence_functions:
-                undesired_sequence_penalty += undesired_sequence_check(action)
-            print("branch ({}) seq_penalty={} total_cost={}\n".format(branch_id, undesired_sequence_penalty, current_cost))
+                undesired_sequence_penalty += undesired_sequence_check(first_action)
+                cost += undesired_sequence_penalty
+            print("branch ({}) seq_penalty={} total_cost={}\n".format(branch_id, undesired_sequence_penalty, cost))
             branch_id += 1
-            return current_cost + undesired_sequence_penalty
+
+            return cost
 
         if action.agent == controllable_agent_name:
             total_cost = 0
@@ -610,14 +612,14 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
             # we can maybe bet on the rationnality of the human to not choose the worst action
             # and bet on the 2 very good scenarios
             for successor in action.next:
-                total_cost += explore_policy(new_agents, successor, current_cost)
+                total_cost += explore_policy(new_agents, successor, cost)
             return total_cost / len(action.next)
 
         elif action.agent == uncontrollable_agent_name:
-            min_cost = explore_policy(new_agents, action.next[0], current_cost)
+            min_cost = explore_policy(new_agents, action.next[0], cost)
             min_i_cost = 0
             for i, successor in enumerate(action.next[1:]):
-                new_cost = explore_policy(new_agents, successor, current_cost)
+                new_cost = explore_policy(new_agents, successor, cost)
                 if new_cost < min_cost:
                     min_i_cost = i + 1
                     min_cost = new_cost
@@ -640,6 +642,16 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
     cost = explore_policy(agents, act, 0)
 
     return cost, act
+
+def _backtrack_plan_one_branch(action, next):
+    if action is not None:
+        action.next = next
+        if action.previous is not None:
+            return _backtrack_plan_bis(action.previous, action)
+        else:
+            return _backtrack_plan_bis(None, action)
+    else:
+        return next
 
 def get_first_action(last_action):
         action = last_action

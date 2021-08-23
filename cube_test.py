@@ -13,25 +13,35 @@ import time
 def cost_idle():
     return 0.0
 
+def cost_wait():
+    return 0.0
+
 def cost_pickup(weight):
     return weight*2
 
 def undesired_state_1(agents):
     penalty = 0.0
-    # if red and green held at the same time, even by different agents
-    if(("red_cube" in agents["robot"].state.isHolding["robot"] or "red_cube" in agents["robot"].state.isHolding["human"])
-        and ("green_cube" in agents["robot"].state.isHolding["robot"] or "green_cube" in agents["robot"].state.isHolding["human"])):
-        penalty = 10.0
 
-    # if False:
+    # if green and blue cube held at the same time, even by different agents
+    if(("blue_cube" in agents["robot"].state.isHolding["robot"] or "blue_cube" in agents["robot"].state.isHolding["human"])
+        and ("green_cube" in agents["robot"].state.isHolding["robot"] or "green_cube" in agents["robot"].state.isHolding["human"])):
+        penalty += 10.0
+        print("STATE PENALTY !")
+
     return penalty
 
-
-def undesired_sequence_1(last_action):
+def undesired_sequence_1(first_action):
     penalty = 0.0
+    action = first_action
 
-    if False:
-        penalty = 5.0
+    # Penalty if robot picks red and human picks after
+    while action.next is not None:
+        print("seq check action : {}".format(action))
+        if action.agent is "robot" and action.name is "robot_pick_cube" and action.parameters[0] is "red_cube":
+            if action.next.agent is "human" and action.next.name is "human_pick_cube":
+                print("SEQ PENALTY !")
+                penalty += 8.0
+        action = action.next
 
     return penalty
 
@@ -55,10 +65,11 @@ def robot_place_cube(agents, self_state, self_name):
     if self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == []:
         return False
     for ag in agents.values():
-        ag.state.isPlaced.append(ag.state.isHolding[self_name].pop())
-    if "red_cube" in self_state.isPlaced:
+        cube = ag.state.isHolding[self_name].pop()
+        ag.state.isPlaced.append(cube)
+    if cube == "red_cube":
         for ag in agents.values():
-            ag.state.weights["blue_cube"] += 3
+            ag.state.weights["blue_cube"] *= 2
     return agents, 1.0
 
 def robot_wait(agents, self_state, self_name):
@@ -80,7 +91,11 @@ def human_place_cube(agents, self_state, self_name):
     if self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == []:
         return False
     for ag in agents.values():
-        ag.state.isPlaced.append(ag.state.isHolding[self_name].pop())
+        cube = ag.state.isHolding[self_name].pop()
+        ag.state.isPlaced.append(cube)
+    if cube == "red_cube":
+        for ag in agents.values():
+            ag.state.weights["blue_cube"] *= 2
     return agents, 1.0
 
 
@@ -144,6 +159,7 @@ if __name__ == "__main__":
 
     # Set cost functions
     hatpehda.set_idle_cost_function(cost_idle)
+    hatpehda.set_wait_cost_function(cost_wait)
     hatpehda.set_undesired_state_functions([undesired_state_1])
     hatpehda.set_undesired_sequence_functions([undesired_sequence_1])
 

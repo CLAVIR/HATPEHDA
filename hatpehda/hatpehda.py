@@ -321,7 +321,7 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
         # Get the operator and tries to apply it on a copy of agents
         operator = agents[agent_name].operators[task.name]
         newagents = copy.deepcopy(agents)
-        result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
+        result = operator(newagents, newagents[agent_name].state, agent_name, False, *task.parameters)
 
         # if not feasible
         if result == False:
@@ -463,7 +463,7 @@ def get_all_applicable_actions(agents, agent_name, solutions, previous_action):
     if task.name in agents[agent_name].operators:
         operator = agents[agent_name].operators[task.name]
         newagents = copy.deepcopy(agents)
-        result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
+        result = operator(newagents, newagents[agent_name].state, agent_name, False, *task.parameters)
         if result == False:
             return
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
@@ -549,7 +549,7 @@ def _merge_sols(sols):
             primitive = prev
     return sols
 
-def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict={}):
+def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict={}, branches=[]):
     branch_id = 1
     def explore_policy(agents, action, cost):
         nonlocal branch_id
@@ -564,7 +564,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
                 cost_op = wait_cost_function()
             else:
                 operator = new_agents[action.agent].operators[action.name]
-                result = operator(new_agents, new_agents[action.agent].state, action.agent, *action.parameters)
+                result = operator(new_agents, new_agents[action.agent].state, action.agent, False, *action.parameters)
                 if isinstance(result, dict):
                     new_agents = result
                     cost_op = cost_dict[action.name]
@@ -592,6 +592,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
 
             last_action = copy.deepcopy(action)
             first_action = _backtrack_plan_one_branch(last_action, None) # set the action.next to only the specific action of this branch
+            branches.append(first_action)
 
             for undesired_sequence_check in undesired_sequence_functions:
                 undesired_sequence_penalty += undesired_sequence_check(first_action)

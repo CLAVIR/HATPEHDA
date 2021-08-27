@@ -28,7 +28,7 @@ def undesired_state_1(agents):
     if(("blue_cube" in agents["robot"].state.isHolding["robot"] or "blue_cube" in agents["robot"].state.isHolding["human"])
         and ("green_cube" in agents["robot"].state.isHolding["robot"] or "green_cube" in agents["robot"].state.isHolding["human"])):
         penalty += 10.0
-        print("STATE PENALTY !")
+        # print("STATE PENALTY !")
 
     return penalty
 
@@ -38,10 +38,10 @@ def undesired_sequence_1(first_action):
 
     # Penalty if robot picks red and human picks after
     while action.next is not None:
-        print("seq check action : {}".format(action))
+        # print("seq check action : {}".format(action))
         if action.agent is "robot" and action.name is "robot_pick_cube" and action.parameters[0] is "red_cube":
             if action.next.agent is "human" and action.next.name is "human_pick_cube":
-                print("SEQ PENALTY !")
+                # print("SEQ PENALTY !")
                 penalty += 8.0
         action = action.next
 
@@ -260,6 +260,7 @@ if __name__ == "__main__":
     sols = []
     fails = []
     hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
+    # debug
     print("len sols = {}".format(len(sols)))
     for i, s in enumerate(sols):
         print("\n({})".format(i+1))
@@ -270,6 +271,7 @@ if __name__ == "__main__":
             if s.next is not None:
                 print(", next:{}".format(s.next))
             s = s.previous
+    print("")
 
     # gui.show_plan(sols, "robot", "human", with_abstract=False)
     # input()

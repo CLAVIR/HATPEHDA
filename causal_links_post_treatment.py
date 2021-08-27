@@ -124,7 +124,7 @@ def compute_causal_links(agents, branches, initial_state, attributes):
         step = Step(action)
 
         previous_state = deepcopy(state)
-        agents, state = apply_step(agents, step, state)
+        agents, state = apply_step(agents, step, state)  ## <========= MAYBE use agents and not state
         state_step = deepcopy(state)
         step.state = state_step
 

@@ -582,8 +582,8 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
         cost += undesired_state_penalty
 
         # Explore
-        print("{}{}".format(action.name, action.parameters))
-        print(" -> id={} cost={} state_penalty={} total={}".format(action.id, cost_op, undesired_state_penalty, cost))
+        # print("{}{}".format(action.name, action.parameters))
+        # print(" -> id={} cost={} state_penalty={} total={}".format(action.id, cost_op, undesired_state_penalty, cost))
 
         if action.next is None or action.next == []:
 

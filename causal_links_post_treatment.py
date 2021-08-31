@@ -140,19 +140,25 @@ def apply_effect(agents, step):
     """
     Only applies the effects of the given step in the state
     given in agents, returns the new state in newagents
+    #TODO : apply effects according to each agent
     """
     newagents = deepcopy(agents)
-    state = newagents["robot"].state
 
-    # append
-    for add in step.effects["append"]:
-        state.attributes[add.attribute][add.key].append(add.val)
-    # remove
-    for rm in step.effects["remove"]:
-        try:
-            state.attributes[rm.attribute][rm.key].remove(rm.val)
-        except:
-            print("no value to remove")
+    # Applies same effects for all agents
+    for ag in newagents.values():
+        # append
+        for add in step.effects["append"]:
+            if not isinstance(ag.state.attributes[add.attribute][add.key], list):
+                ag.state.attributes[add.attribute][add.key] = add.val
+            else:
+                ag.state.attributes[add.attribute][add.key].append(add.val)
+        # remove
+        for rm in step.effects["remove"]:
+            if not isinstance(ag.state.attributes[rm.attribute][rm.key], list):
+                try:
+                    ag.state.attributes[rm.attribute][rm.key].remove(rm.val)
+                except:
+                    print("no value to remove")
 
     return newagents
 
@@ -161,6 +167,7 @@ def compute_effects(previous_agents, current_agents, attributes):
     Computes and returns the effects of a step by checking the differences
     between the given previous state (previous_agents) and the given current state
     (current_agents). The attributes parameter helps to check each attribute of the states
+    #TODO : differenciate effects for each agents
     """
     previous_state = previous_agents["robot"].state
     current_state = current_agents["robot"].state

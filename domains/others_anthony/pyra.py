@@ -4,7 +4,7 @@ import hatpehda
 from copy import deepcopy
 from hatpehda import gui
 import time
-from causal_links_post_treatment import compute_causal_links
+from hatpehda.causal_links_post_treatment import compute_causal_links
 
 
 ######################################################
@@ -53,46 +53,36 @@ def undesired_sequence_1(first_action):
 ###########
 ## ROBOT ##
 ###########
-def move(agents, self_state, self_name, loc_from, loc_to):
+def robot_pick_cube(agents, self_state, self_name, cube):
     # NOT PRECONDITIONS
-    if self_state.at[self_name] != loc_from or self_state.at[self_name] == loc_to:
+    if self_state.isHolding[self_name] is not None and self_state.isHolding[self_name] != []:
+        return False
+    if cube in self_state.isHolding["human"] or cube in self_state.isPlaced["zone"] or cube not in self_state.available["zone"]:
         return False
 
     # EFFECTS
     for ag in agents.values():
-       ag.state.at[self_name] = loc_to
-    return agents, 1.0
+       ag.state.isHolding[self_name].append(cube)
+       ag.state.available["zone"].remove(cube)
+    return agents, cost_pickup(self_state.weights[cube])
 
-def pick(agents, self_state, self_name, obj):
-    # print("in pick operator {} {}".format(self_name, obj))
+def robot_place(agents, self_state, self_name, cube):
     # NOT PRECONDITIONS
-    if self_state.at[self_name] != self_state.objLoc[obj]:
+    if cube in self_state.isPlaced["zone"]:
         return False
-    # print("next pick")
+    if cube == "p":
+        if "b1" not in self_state.isPlaced["zone"] or "b2" not in self_state.isPlaced["zone"]:
+            return False
+    if cube == "t1":
+        if "p" not in self_state.isPlaced["zone"]:
+            return False
+    if cube == "t2":
+        if "t1" not in self_state.isPlaced["zone"]:
+            return False
 
     # EFFECTS
     for ag in agents.values():
-        ag.state.holding[self_name].append(obj)
-        ag.state.objLoc[obj] = self_name
-        # print("{} : {} holding {}".format(ag.name, self_name, ag.state.holding[self_name]))
-
-    return agents, 1.0
-
-def build(agents, self_state, self_name, obj1, obj2):
-    # print("in build operator")
-    # print("obj1 = {} obj2 = {}".format(obj1, obj2))
-    # print("robot : {}".format(self_state.holding[self_name]))
-    # print("human : {}".format(agents["human"].state.holding[self_name]))
-    if not(obj1 in self_state.holding[self_name] and obj2 in self_state.holding[self_name]):
-        return False
-    if not(self_state.at[self_name] == "l3"):
-        return False
-    # print("we are good")
-
-    for ag in agents.values():
-        ag.state.holding[self_name].remove(obj1)
-        ag.state.holding[self_name].remove(obj2)
-        ag.state.built["built"].append((obj1, obj2))
+        ag.state.isPlaced["zone"].append(cube)
 
     return agents, 1.0
 
@@ -102,7 +92,7 @@ def build(agents, self_state, self_name, obj1, obj2):
 ###########
 
 
-ctrl_operators = [move, pick, build]
+ctrl_operators = [robot_place]
 unctrl_operators = []
 
 ######################################################
@@ -113,29 +103,34 @@ unctrl_operators = []
 ## ROBOT ##
 ###########
 
-def robot_build(agents, self_state, self_name, obj1, obj2):
-    return [("get_obj", obj1), ("get_obj", obj2), ("building",)]
+def robot_build(agents, self_state, self_name):
+    return [("robot_build_base",), ("robot_build_pont",), ("robot_build_top",)]
 
-def get_obj(agents, self_state, self_name, obj):
-    tasks = []
-
-    if obj in self_state.holding[self_name]:
-        return []
-
-    if self_state.at[self_name] != self_state.objLoc[obj]:
-        tasks.append(("move", self_state.at[self_name], self_state.objLoc[obj]))
-    tasks.append(("pick", obj))
-
+@hatpehda.multi_decomposition
+def robot_build_base(agents, self_state, self_name):
+    tasks=[]
+    if "b1" not in self_state.isPlaced["zone"]:
+        tasks.append([("robot_place", "b1"), ("robot_build_base",)])
+    if "b2" not in self_state.isPlaced["zone"]:
+        tasks.append([("robot_place", "b2"), ("robot_build_base",)])
     return tasks
 
-def building(agents, self_state, self_name):
-    tasks = []
-    if self_state.at[self_name] != "l3":
-        tasks.append(("move", self_state.at[self_name], "l3"))
-    tasks.append(("build", "a", "b"))
+def robot_build_pont(agents, self_state, self_name):
+    if "p" not in self_state.isPlaced["zone"] and "b1" in self_state.isPlaced["zone"] and "b2" in self_state.isPlaced["zone"]:
+        return [("robot_place", "p")]
+    return []
+
+@hatpehda.multi_decomposition
+def robot_build_top(agents, self_state, self_name):
+    tasks=[]
+    if "t1" not in self_state.isPlaced["zone"] and "p" in self_state.isPlaced["zone"]:
+        tasks.append([("robot_place", "t1"), ("robot_build_top",)])
+    if "t2" not in self_state.isPlaced["zone"] and "t1" in self_state.isPlaced["zone"]:
+        tasks.append([("robot_place", "t2"), ("robot_build_top",)])
     return tasks
 
-ctrl_methods = [("robot_build", robot_build), ("get_obj", get_obj), ("building", building)]
+
+ctrl_methods = [("robot_build", robot_build), ("robot_build_base", robot_build_base), ("robot_build_pont", robot_build_pont), ("robot_build_top", robot_build_top)]
 unctrl_methods = []
 
 ######################################################
@@ -145,15 +140,15 @@ unctrl_methods = []
 if __name__ == "__main__":
     # Initial state
     initial_state = hatpehda.State("init")
-    initial_state.locations = {"locations": ["l1", "l2", "l3"]} # constant
-    initial_state.objLoc = {"a": "l1", "b": "l2"}
-    initial_state.at = {"robot": "l1", "human": []}
-    initial_state.holding = {"robot": [], "human": []}
-    initial_state.built = {"built": []}
-    initial_state.attributes = {    "at": initial_state.at,
-                                    "holding": initial_state.holding,
-                                    "objLoc": initial_state.objLoc,
-                                    "built": initial_state.built}
+    initial_state.isPlaced = {"zone": []}
+    initial_state.attributes = {    "isPlaced": initial_state.isPlaced}
+
+
+    # Set cost functions
+    # hatpehda.set_idle_cost_function(cost_idle)
+    # hatpehda.set_wait_cost_function(cost_wait)
+    # hatpehda.set_undesired_state_functions([undesired_state_1])
+    # hatpehda.set_undesired_sequence_functions([undesired_sequence_1])
 
     # Robot
     hatpehda.declare_operators("robot", *ctrl_operators)
@@ -162,7 +157,7 @@ if __name__ == "__main__":
     robot_state = deepcopy(initial_state)
     robot_state.__name__ = "robot_init"
     hatpehda.set_state("robot", robot_state)
-    hatpehda.add_tasks("robot", [("robot_build", "a", "b")])
+    hatpehda.add_tasks("robot", [("robot_build",)])
 
     # Human
     hatpehda.declare_operators("human", *unctrl_operators)

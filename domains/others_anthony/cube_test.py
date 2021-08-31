@@ -4,7 +4,7 @@ import hatpehda
 from copy import deepcopy
 from hatpehda import gui
 import time
-from causal_links_post_treatment import compute_causal_links
+from hatpehda.causal_links_post_treatment import compute_causal_links
 
 
 ######################################################

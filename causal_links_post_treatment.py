@@ -68,7 +68,6 @@ def set_link(links, step, target):
         print("threat ", end='')
     print("set_link : {} => {}".format(new_link.step.action, new_link.target.action))
 
-
 def get_app_steps(agents, other_steps):
     """
     Returns all applicable steps contained in the list "other_steps"
@@ -109,19 +108,19 @@ def compute_applicable_changes(previous_applicable_steps, applicable_steps):
             no_longer_applicable_steps.append(step)
 
     # Debug #
-    print("\nCompute new applicable")
-    print("applicable_steps:")
-    for step in applicable_steps:
-        print("  {}".format(step.action))
-    print("previous_applicable_steps:")
-    for step in previous_applicable_steps:
-        print("  {}".format(step.action))
-    print("new applicable steps :")
-    for new_app_step in new_applicable_steps:
-        print("  {}".format(new_app_step.action))
-    print("no longer applicable steps :")
-    for no_long_app_steps in no_longer_applicable_steps:
-        print("  {}".format(no_long_app_steps.action))
+    # print("\nCompute new applicable")
+    # print("applicable_steps:")
+    # for step in applicable_steps:
+    #     print("  {}".format(step.action))
+    # print("previous_applicable_steps:")
+    # for step in previous_applicable_steps:
+    #     print("  {}".format(step.action))
+    # print("new applicable steps :")
+    # for new_app_step in new_applicable_steps:
+    #     print("  {}".format(new_app_step.action))
+    # print("no longer applicable steps :")
+    # for no_long_app_steps in no_longer_applicable_steps:
+    #     print("  {}".format(no_long_app_steps.action))
 
     return new_applicable_steps, no_longer_applicable_steps
 
@@ -136,7 +135,6 @@ def apply_step(agents, step):
         operator = agents[agent_name].operators[step.action.name]
         result = operator(newagents, newagents[agent_name].state, agent_name, *step.action.parameters)
     return newagents
-
 
 def apply_effect(agents, step):
     """
@@ -244,7 +242,7 @@ def initialize(initial_agents, branches, attributes):
             continue
 
         # Creates step from the action in the plan
-        print("\nstep {}".format(action))
+        print("\nstep {} : {}".format(len(steps), action))
         step = Step(action)
 
         # Adds the world state (step_agents) after being applied
@@ -289,7 +287,7 @@ def compute_causal_links(agents, branches, attributes):
     initialize(initial_agents, branches, attributes)
 
     # Debug
-    print("initial state:")
+    print("\ninitial state:")
     print_states(initial_agents)
     print("")
 
@@ -352,9 +350,10 @@ def compute_causal_links(agents, branches, attributes):
                 # Check if step is applicable
                 applicable_steps =  get_app_steps(check_all_agents, steps)
                 if step in applicable_steps:
-                    print("A Finalement tous ses supports !")
+                    print("Has all its supports !")
                     has_all_its_supports = True
                 else:
+                    print("Still missing some supports ..")
                     j -= 1
 
     return supports, threats

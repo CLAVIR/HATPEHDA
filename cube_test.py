@@ -5,7 +5,6 @@ from copy import deepcopy
 from hatpehda import gui
 import time
 from causal_links_post_treatment import compute_causal_links
-from causal_links_post_treatment import compute_effects
 
 
 ######################################################
@@ -239,15 +238,15 @@ if __name__ == "__main__":
     branches = []
     cost, plan_root = hatpehda.select_conditional_plan(sols, "robot", "human", branches=branches)
     # print("\npolicy cost", cost)
-    # gui.show_plan(hatpehda.get_last_actions(plan_root), "robot", "human", with_abstract=False)
+    gui.show_plan(hatpehda.get_last_actions(plan_root), "robot", "human", with_abstract=False)
 
-    print("\n\nCall compute_casual_links:")
+    # print("\n\nCall compute_casual_links:")
     # print(branches)
-    supports, threats = compute_causal_links(hatpehda.agents, branches, initial_state, initial_state.attributes)
-    print("\n FINAL :")
-    print("supports = ")
-    for sup in supports:
-        print("  {} => {}".format(sup.step.action, sup.target.action))
-    print("threats = ")
-    for threat in threats:
-        print("  {} => {}".format(threat.step.action, threat.target.action))
+    # supports, threats = compute_causal_links(hatpehda.agents, branches, initial_state, initial_state.attributes)
+    # print("\n FINAL :")
+    # print("supports = ")
+    # for sup in supports:
+    #     print("  {} => {}".format(sup.step.action, sup.target.action))
+    # print("threats = ")
+    # for threat in threats:
+    #     print("  {} => {}".format(threat.step.action, threat.target.action))

@@ -196,7 +196,7 @@ if __name__ == "__main__":
 
     print("\n\nCall compute_casual_links:")
     # print(branches)
-    supports, threats = compute_causal_links2(hatpehda.agents, branches, initial_state.attributes)
+    supports, threats = compute_causal_links(hatpehda.agents, branches, initial_state.attributes)
     print("\n FINAL :")
     print("supports = ")
     for sup in supports:

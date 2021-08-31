@@ -51,44 +51,15 @@ def undesired_sequence_1(first_action):
 ################### Primitive tasks ##################
 ######################################################
 
-# OPERATOR TEMPLATES
-#
-#############
-# Version 1 #
-#############
-# def operator(agents, self_state, self_name, forced, *params):
-#     # FORCED OR PRECONDITIONS
-#     if forced or ( PRECONDITIONS ):
-#         # EFFECTS
-#
-#         return agents, cost(*params)
-#
-#     else:
-#         return False
-#
-#############
-# Version 2 #
-#############
-# def operator(agents, self_state, self_name, forced, *params):
-#      if not forced:
-#          # NOT PRECONDITIONS
-#          if( not (PRECONDITIONS) ):
-#             return False
-#
-#      # EFFECTS
-#
-#      return agents, cost(*params)
-
 ###########
 ## ROBOT ##
 ###########
-def robot_pick_cube(agents, self_state, self_name, forced, cube):
-    if not forced:
-        # NOT PRECONDITIONS
-        if self_state.isHolding[self_name] is not None and self_state.isHolding[self_name] != []:
-            return False
-        if cube in self_state.isHolding["human"] or cube in self_state.isPlaced["zone"] or cube not in self_state.available["zone"]:
-            return False
+def robot_pick_cube(agents, self_state, self_name, cube):
+    # NOT PRECONDITIONS
+    if self_state.isHolding[self_name] is not None and self_state.isHolding[self_name] != []:
+        return False
+    if cube in self_state.isHolding["human"] or cube in self_state.isPlaced["zone"] or cube not in self_state.available["zone"]:
+        return False
 
     # EFFECTS
     for ag in agents.values():
@@ -96,28 +67,11 @@ def robot_pick_cube(agents, self_state, self_name, forced, cube):
        ag.state.available["zone"].remove(cube)
     return agents, cost_pickup(self_state.weights[cube])
 
-# def robot_pick_cube(agents, self_state, self_name, forced, cube):
-#     # FORCED OR PRECONDITIONS
-#     if( forced
-#     or( (self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == [])
-#     and (cube not in self_state.isHolding["human"])
-#     and (cube not in self_state.isPlaced)
-#     )):
-#         # EFFECTS
-#         for ag in agents.values():
-#            ag.state.isHolding[self_name].append(cube)
-#
-#         return agents, cost_pickup(self_state.weights[cube])
-#
-#     else:
-#         return False
 
-
-def robot_place_cube(agents, self_state, self_name, forced):
-    if not forced:
-        # NOT PRECONDITIONS
-        if self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == []:
-            return False
+def robot_place_cube(agents, self_state, self_name):
+    # NOT PRECONDITIONS
+    if self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == []:
+        return False
 
     # EFFECTS
     for ag in agents.values():
@@ -129,19 +83,18 @@ def robot_place_cube(agents, self_state, self_name, forced):
 
     return agents, 1.0
 
-def robot_wait(agents, self_state, self_name, forced):
+def robot_wait(agents, self_state, self_name):
     return agents, 1.0
 
 ###########
 ## HUMAN ##
 ###########
-def human_pick_cube(agents, self_state, self_name, forced, cube):
-    if not forced:
-        # NOT PRECONDITIONS
-        if self_state.isHolding[self_name] is not None and self_state.isHolding[self_name] != []:
-            return False
-        if cube in self_state.isHolding["robot"] or cube in self_state.isPlaced["zone"] or cube not in self_state.available["zone"]:
-            return False
+def human_pick_cube(agents, self_state, self_name, cube):
+    # NOT PRECONDITIONS
+    if self_state.isHolding[self_name] is not None and self_state.isHolding[self_name] != []:
+        return False
+    if cube in self_state.isHolding["robot"] or cube in self_state.isPlaced["zone"] or cube not in self_state.available["zone"]:
+        return False
 
     # EFFECTS
     for ag in agents.values():
@@ -150,11 +103,10 @@ def human_pick_cube(agents, self_state, self_name, forced, cube):
 
     return agents, 1.0
 
-def human_place_cube(agents, self_state, self_name, forced):
-    if not forced:
-        # NOT PRECONDITIONS
-        if self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == []:
-            return False
+def human_place_cube(agents, self_state, self_name):
+    # NOT PRECONDITIONS
+    if self_state.isHolding[self_name] is None or self_state.isHolding[self_name] == []:
+        return False
 
     # EFFECTS
     for ag in agents.values():

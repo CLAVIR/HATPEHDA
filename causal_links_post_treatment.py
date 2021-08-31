@@ -79,7 +79,7 @@ def get_app_steps(agents, other_steps):
             # print("added")
         else:
             operator = newagents[other_step.action.agent].operators[other_step.action.name]
-            result = operator(newagents, newagents[other_step.action.agent].state, other_step.action.agent, False, *other_step.action.parameters)
+            result = operator(newagents, newagents[other_step.action.agent].state, other_step.action.agent, *other_step.action.parameters)
 
             if result != False:
                 applicable_steps.append(other_step)
@@ -123,7 +123,7 @@ def apply_step(agents, step):
     if step.action.name != "IDLE":
         agent_name = step.action.agent
         operator = agents[agent_name].operators[step.action.name]
-        result = operator(newagents, newagents[agent_name].state, agent_name, False, *step.action.parameters)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *step.action.parameters)
     return newagents
 
 def apply_effect(agents, step):

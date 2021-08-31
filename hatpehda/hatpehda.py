@@ -321,7 +321,7 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
         # Get the operator and tries to apply it on a copy of agents
         operator = agents[agent_name].operators[task.name]
         newagents = copy.deepcopy(agents)
-        result = operator(newagents, newagents[agent_name].state, agent_name, False, *task.parameters)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
 
         # if not feasible
         if result == False:
@@ -463,7 +463,7 @@ def get_all_applicable_actions(agents, agent_name, solutions, previous_action):
     if task.name in agents[agent_name].operators:
         operator = agents[agent_name].operators[task.name]
         newagents = copy.deepcopy(agents)
-        result = operator(newagents, newagents[agent_name].state, agent_name, False, *task.parameters)
+        result = operator(newagents, newagents[agent_name].state, agent_name, *task.parameters)
         if result == False:
             return
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
@@ -564,7 +564,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
                 cost_op = wait_cost_function()
             else:
                 operator = new_agents[action.agent].operators[action.name]
-                result = operator(new_agents, new_agents[action.agent].state, action.agent, False, *action.parameters)
+                result = operator(new_agents, new_agents[action.agent].state, action.agent  , *action.parameters)
                 if isinstance(result, dict):
                     new_agents = result
                     cost_op = cost_dict[action.name]

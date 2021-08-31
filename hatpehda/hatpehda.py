@@ -549,10 +549,10 @@ def _merge_sols(sols):
             primitive = prev
     return sols
 
-def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict={}, branches=[]):
-    branch_id = 1
+def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_name, cost_dict={}):
+    all_branches = []
+    all_costs = []
     def explore_policy(agents, action, cost):
-        nonlocal branch_id
         new_agents = copy.deepcopy(agents) # check if needed
 
         # Virtually apply the action and calculate its cost
@@ -592,13 +592,14 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
 
             last_action = copy.deepcopy(action)
             first_action = _backtrack_plan_one_branch(last_action, None) # set the action.next to only the specific action of this branch
-            branches.append(first_action)
 
             for undesired_sequence_check in undesired_sequence_functions:
                 undesired_sequence_penalty += undesired_sequence_check(first_action)
                 cost += undesired_sequence_penalty
-            print("branch ({}) seq_penalty={} total_cost={}\n".format(branch_id, undesired_sequence_penalty, cost))
-            branch_id += 1
+
+            # print("branch ({}) seq_penalty={} total_cost={}\n".format(len(all_branches)+1, undesired_sequence_penalty, cost))
+            all_branches.append(first_action)
+            all_costs.append(cost)
 
             return cost
 
@@ -642,7 +643,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
     act = copy.deepcopy(begin_action)
     cost = explore_policy(agents, act, 0)
 
-    return cost, act
+    return act, cost, all_branches, all_costs
 
 def _backtrack_plan_one_branch(action, next):
     if action is not None:

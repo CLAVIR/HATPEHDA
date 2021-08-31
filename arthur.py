@@ -194,15 +194,12 @@ if __name__ == "__main__":
     # input()
 
     # Select the best plan from the ones found above #
-    branches = []
-    cost, plan_root = hatpehda.select_conditional_plan(sols, "robot", "human", branches=branches)
-    # print("\npolicy cost", cost)
-    # gui.show_plan(hatpehda.get_last_actions(plan_root), "robot", "human", with_abstract=False)
-    #
+    best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, "robot", "human")
+    # print("\npolicy cost", best_cost)
+    # gui.show_plan(hatpehda.get_last_actions(best_plan), "robot", "human", with_abstract=False)
+
     print("\n\nCall compute_casual_links:")
-    # print(branches)
-    supports, threats = compute_causal_links(hatpehda.agents, branches, initial_state.attributes)
-    print("\n FINAL :")
+    supports, threats = compute_causal_links(hatpehda.agents, all_branches, initial_state.attributes)
     print("supports = ")
     for sup in supports:
         print("  {} => {}".format(sup.step.action, sup.target.action))

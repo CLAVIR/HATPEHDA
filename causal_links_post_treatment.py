@@ -62,11 +62,13 @@ def set_link(links, step, target):
     links.append(new_link)
 
     # Debug #
-    if links is supports:
-        print("support ", end='')
-    if links is threats:
-        print("threat ", end='')
-    print("set_link : {} => {}".format(new_link.step.action, new_link.target.action))
+    # if links is supports:
+    #     print("support ", end='')
+    # if links is threats:
+    #     print("threat ", end='')
+    # print("set_link : {} => {}".format(new_link.step.action, new_link.target.action))
+
+    return None
 
 def get_app_steps(agents, other_steps):
     """
@@ -154,7 +156,7 @@ def apply_effect(agents, step):
                 ag.state.attributes[add.attribute][add.key].append(add.val)
         # remove
         for rm in step.effects["remove"]:
-            if not isinstance(ag.state.attributes[rm.attribute][rm.key], list):
+            if isinstance(ag.state.attributes[rm.attribute][rm.key], list):
                 try:
                     ag.state.attributes[rm.attribute][rm.key].remove(rm.val)
                 except:
@@ -208,7 +210,7 @@ def compute_effects(previous_agents, current_agents, attributes):
                             modifs["append"].append(modif)
     return modifs
 
-def initialize(initial_agents, branches, attributes):
+def initialize(initial_agents, all_branches, attributes):
     """
     Initialize the data structure by first recovering all actions of the plan
     and then creating a step for each action. A step has an associated action of the plan,
@@ -218,7 +220,7 @@ def initialize(initial_agents, branches, attributes):
 
     # Treats plans #
     plans = []
-    for branch in branches:
+    for branch in all_branches:
         plan = []
         action = branch
         while action is not None:
@@ -227,12 +229,12 @@ def initialize(initial_agents, branches, attributes):
         plans.append(plan)
     # For now we only treats the first branch
     plan = plans[0]
-    print("plan:")
-    for action in plan:
-        print("  {}".format(action))
+    # print("plan:")
+    # for action in plan:
+    #     print("  {}".format(action))
 
     # Initializes steps #
-    print("\nINIT")
+    # print("\nINIT")
 
     # First action in plan must be BEGIN, without any effects
     begin_action = Operator("BEGIN", [], "human", None, None, None)
@@ -249,7 +251,6 @@ def initialize(initial_agents, branches, attributes):
             continue
 
         # Creates step from the action in the plan
-        print("\nstep {} : {}".format(len(steps), action))
         step = Step(action)
 
         # Adds the world state (step_agents) after being applied
@@ -262,21 +263,71 @@ def initialize(initial_agents, branches, attributes):
         step.effects = effects
 
         # Debug #
-        print("effects=")
-        print("  rm  =", end="")
-        for rm in effects["remove"]:
-            print(" ({}, {}, {})".format(rm.attribute, rm.key, rm.val), end="")
-        print("\n  add =", end='')
-        for add in effects["append"]:
-            print(" ({}, {}, {})".format(add.attribute, add.key, add.val), end="")
-        print("")
+        # print("\nstep {} : {}".format(len(steps), action))
+        # print("effects=")
+        # print("  rm  =", end="")
+        # for rm in effects["remove"]:
+        #     print(" ({}, {}, {})".format(rm.attribute, rm.key, rm.val), end="")
+        # print("\n  add =", end='')
+        # for add in effects["append"]:
+        #     print(" ({}, {}, {})".format(add.attribute, add.key, add.val), end="")
+        # print("")
 
         steps.append(step)
+
+def look_for_threats():
+    global steps
+    global threats
+
+##### Core algorithm
+    previous_app_steps = []
+    for step in steps:
+        # print("\n===> THREATS step={}".format(step.action))
+        curr_agents = step.agents
+        # print_states(curr_agents)
+
+        # print("get applicable steps which are after the current step:")
+        app_steps = get_app_steps(curr_agents, steps[steps.index(step)+1:])
+        # for app_step in app_steps:
+            # print("  {}".format(app_step.action))
+
+        new_app_steps, no_long_app_steps = compute_applicable_changes(previous_app_steps, app_steps)
+        # print("new applicable steps :")
+        # for new_app_step in new_app_steps:
+        #     print("  {}".format(new_app_step.action))
+
+        for new_app_step in new_app_steps:
+            # print("=>test {}".format(new_app_step.action))
+            # print_states(curr_agents)
+
+            # Add step as support of new_app_step
+            # set_link(supports, step, new_app_step)
+
+            # virtually_apply(new_app_step)
+            indep_agents = apply_step(curr_agents, new_app_step)
+            # print_states(indep_agents)
+
+
+            # get list indep_applicable_actions
+            indep_app_steps = get_app_steps(indep_agents, steps)
+
+            # from indep_applicable_actions and currently_applicable_actions compute indep_new_applicable_actions and indep_no_longer_applicable_actions
+            indep_new_app_steps, indep_no_longer_app_steps = compute_applicable_changes(app_steps, indep_app_steps)
+
+            # for indep_new_app_step in indep_new_app_steps:
+                # set new_app_step as support of indep_new_app_step
+                # set_link(supports, new_app_step, indep_new_app_step)
+            for indep_no_longer_app_step in indep_no_longer_app_steps:
+                # set new_app_step as threat for indep_no_longer_app_step
+                set_link(threats, new_app_step, indep_no_longer_app_step)
+
+        previous_app_steps = app_steps
+
 
 #############
 # Main algo #
 #############
-def compute_causal_links(agents, branches, attributes):
+def compute_causal_links(agents, all_branches, attributes):
     """
     Computes and returns the causal links of all the possible plans
     """
@@ -291,47 +342,48 @@ def compute_causal_links(agents, branches, attributes):
     initial_agents = deepcopy(agents)
 
     # Initialization
-    initialize(initial_agents, branches, attributes)
+    initialize(initial_agents, all_branches, attributes)
 
     # Debug
-    print("\ninitial state:")
-    print_states(initial_agents)
-    print("")
+    # print("\ninitial state:")
+    # print_states(initial_agents)
+    # print("")
 
     # Explore the plan from the last action
     for i in range(len(steps)-1, 0, -1): # sauf BEGIN
         step = steps[i]
         newagents = deepcopy(initial_agents)
-        print("\n==> step {} : {} <==".format(i, step.action))
+        # print("\n==> step {} : {} <==".format(i, step.action))
 
         # Apply effects of all the supports of step from the initial state
         for sup in supports:
             if sup.target.action == step.action:
-                print("support {}".format(sup.step.action))
+                # print("support {}".format(sup.step.action))
                 newagents = apply_effect(newagents, sup.step)
-        print_states(newagents)
+        # print_states(newagents)
 
         # Check if step is applicable
         applicable_steps =  get_app_steps(newagents, steps)
 
-        print("applicable_steps :")
-        for app_step in applicable_steps:
-            print("  {}".format(app_step.action))
+        # print("applicable_steps :")
+        # for app_step in applicable_steps:
+            # print("  {}".format(app_step.action))
 
         if step in applicable_steps:
-            print("A tous ses supports !")
+            # print("A tous ses supports !")
+            continue
         else:
-            print("hum il en manque")
+            # print("hum il en manque")
             has_all_its_supports = False
             j = i - 1
             while not has_all_its_supports and j>=0:
-                print("\nj={}".format(j))
+                # print("\nj={}".format(j))
 
                 # Apply effect of all supports in state of step j-1
                 newagents = deepcopy(steps[j-1].agents)
                 for sup in supports:
                     if sup.target.action == step.action:
-                        print("known support {}".format(sup.step.action))
+                        # print("known support {}".format(sup.step.action))
                         newagents = apply_effect(newagents, sup.step)
 
                 # Apply effects of step j in state j-1, once effects of supports have been applied
@@ -343,8 +395,7 @@ def compute_causal_links(agents, branches, attributes):
 
                 # If step i is appicable, step j is a support of step i (step)
                 if step in new_applicable_steps:
-                    print(steps[j].action, end='')
-                    print(" is a support !")
+                    # print("{} is a support !".format(steps[j].action))
                     set_link(supports, steps[j], step)
 
                 # Check if step has all its supports
@@ -352,15 +403,17 @@ def compute_causal_links(agents, branches, attributes):
                 check_all_agents = deepcopy(initial_agents)
                 for sup in supports:
                     if sup.target.action == step.action:
-                        print("support {}".format(sup.step.action))
+                        # print("support {}".format(sup.step.action))
                         check_all_agents = apply_effect(check_all_agents, sup.step)
                 # Check if step is applicable
                 applicable_steps =  get_app_steps(check_all_agents, steps)
                 if step in applicable_steps:
-                    print("Has all its supports !")
+                    # print("Has all its supports !")
                     has_all_its_supports = True
                 else:
-                    print("Still missing some supports ..")
+                    # print("Still missing some supports ..")
                     j -= 1
+
+    look_for_threats()
 
     return supports, threats

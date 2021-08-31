@@ -219,34 +219,31 @@ if __name__ == "__main__":
     fails = []
     hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
     # debug
-    # print("len sols = {}".format(len(sols)))
-    # for i, s in enumerate(sols):
-    #     print("\n({})".format(i+1))
-    #     while s is not None:
-    #         print("{} : {}{}".format(s.id, s.name, s.parameters), end='')
-    #         if s.previous is not None:
-    #             print(", previous :{}{}".format(s.previous.name, s.previous.parameters), end='')
-    #         if s.next is not None:
-    #             print(", next:{}".format(s.next))
-    #         s = s.previous
-    # print("")
+    print("len sols = {}".format(len(sols)))
+    for i, s in enumerate(sols):
+        print("\n({})".format(i+1))
+        while s is not None:
+            print("{} : {}{}".format(s.id, s.name, s.parameters), end='')
+            if s.previous is not None:
+                print(", previous :{}{}".format(s.previous.name, s.previous.parameters), end='')
+            if s.next is not None:
+                print(", next:{}".format(s.next))
+            s = s.previous
+    print("")
 
     # gui.show_plan(sols, "robot", "human", with_abstract=False)
     # input()
 
     # Select the best plan from the ones found above #
-    branches = []
-    cost, plan_root = hatpehda.select_conditional_plan(sols, "robot", "human", branches=branches)
-    # print("\npolicy cost", cost)
-    gui.show_plan(hatpehda.get_last_actions(plan_root), "robot", "human", with_abstract=False)
+    best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, "robot", "human")
+    # print("\npolicy cost", best_cost)
+    # gui.show_plan(hatpehda.get_last_actions(best_plan), "robot", "human", with_abstract=False)
 
-    # print("\n\nCall compute_casual_links:")
-    # print(branches)
-    # supports, threats = compute_causal_links(hatpehda.agents, branches, initial_state, initial_state.attributes)
-    # print("\n FINAL :")
-    # print("supports = ")
-    # for sup in supports:
-    #     print("  {} => {}".format(sup.step.action, sup.target.action))
-    # print("threats = ")
-    # for threat in threats:
-    #     print("  {} => {}".format(threat.step.action, threat.target.action))
+    print("\n\nCall compute_casual_links:")
+    supports, threats = compute_causal_links(hatpehda.agents, all_branches, initial_state.attributes)
+    print("supports = ")
+    for sup in supports:
+        print("  {} => {}".format(sup.step.action, sup.target.action))
+    print("threats = ")
+    for threat in threats:
+        print("  {} => {}".format(threat.step.action, threat.target.action))

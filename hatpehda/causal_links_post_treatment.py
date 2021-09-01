@@ -288,28 +288,32 @@ def look_for_threats():
 
         # print("get applicable steps which are after the current step:")
         app_steps = get_app_steps(curr_agents, steps[steps.index(step)+1:])
+        # print("app steps:")
         # for app_step in app_steps:
-            # print("  {}".format(app_step.action))
+        #     print("  {}".format(app_step.action))
 
-        new_app_steps, no_long_app_steps = compute_applicable_changes(previous_app_steps, app_steps)
+        # new_app_steps, no_long_app_steps = compute_applicable_changes(previous_app_steps, app_steps)
         # print("new applicable steps :")
         # for new_app_step in new_app_steps:
-        #     print("  {}".format(new_app_step.action))
+            # print("  {}".format(new_app_step.action))
 
-        for new_app_step in new_app_steps:
-            # print("=>test {}".format(new_app_step.action))
+        for app_step in app_steps:
+            # print("=>test {}".format(app_step.action))
             # print_states(curr_agents)
 
             # Add step as support of new_app_step
             # set_link(supports, step, new_app_step)
 
             # virtually_apply(new_app_step)
-            indep_agents = apply_step(curr_agents, new_app_step)
+            indep_agents = apply_step(curr_agents, app_step)
             # print_states(indep_agents)
 
 
             # get list indep_applicable_actions
             indep_app_steps = get_app_steps(indep_agents, steps)
+            # print("indep app steps")
+            # for indep_app_step in indep_app_steps:
+            #     print(indep_app_step.action)
 
             # from indep_applicable_actions and currently_applicable_actions compute indep_new_applicable_actions and indep_no_longer_applicable_actions
             indep_new_app_steps, indep_no_longer_app_steps = compute_applicable_changes(app_steps, indep_app_steps)
@@ -319,7 +323,7 @@ def look_for_threats():
                 # set_link(supports, new_app_step, indep_new_app_step)
             for indep_no_longer_app_step in indep_no_longer_app_steps:
                 # set new_app_step as threat for indep_no_longer_app_step
-                set_link(threats, new_app_step, indep_no_longer_app_step)
+                set_link(threats, app_step, indep_no_longer_app_step)
 
         previous_app_steps = app_steps
 
@@ -381,7 +385,7 @@ def compute_causal_links(agents, all_branches, attributes):
             has_all_its_supports = False
             j = i - 1
             while not has_all_its_supports and j>=0:
-                # print("\nj={}".format(j))
+                # print("\nj={} {}".format(j, steps[j].action))
 
                 # Apply effect of all supports in state of step j-1
                 newagents = deepcopy(steps[j-1].agents)
@@ -391,15 +395,13 @@ def compute_causal_links(agents, all_branches, attributes):
                         newagents = apply_effect(newagents, sup.step)
 
                 # Apply effects of step j in state j-1, once effects of supports have been applied
-                before_applicable_steps = get_app_steps(steps[j-1].agents, steps)
+                before_applicable_steps = get_app_steps(newagents, steps)
                 newagents = apply_effect(newagents, steps[j])
                 after_applicable_steps = get_app_steps(newagents, steps)
-
                 new_applicable_steps, no_longer_app_steps = compute_applicable_changes(before_applicable_steps, after_applicable_steps)
 
                 # If step i is appicable, step j is a support of step i (step)
                 if step in new_applicable_steps:
-                    # print("{} is a support !".format(steps[j].action))
                     set_link(supports, steps[j], step)
 
                 # Check if step has all its supports
@@ -420,4 +422,4 @@ def compute_causal_links(agents, all_branches, attributes):
 
     look_for_threats()
 
-    return supports, threats
+    return supports, threats, steps

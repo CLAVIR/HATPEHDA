@@ -356,9 +356,11 @@ def compute_causal_links(agents, all_branches, attributes):
         # print("\n==> step {} : {} <==".format(i, step.action))
 
         # Apply effects of all the supports of step from the initial state
+        has_supports = False
         for sup in supports:
             if sup.target.action == step.action:
                 # print("support {}".format(sup.step.action))
+                has_supports = True
                 newagents = apply_effect(newagents, sup.step)
         # print_states(newagents)
 
@@ -370,6 +372,8 @@ def compute_causal_links(agents, all_branches, attributes):
             # print("  {}".format(app_step.action))
 
         if step in applicable_steps:
+            if not has_supports:
+                set_link(supports, steps[0], step)
             # print("A tous ses supports !")
             continue
         else:

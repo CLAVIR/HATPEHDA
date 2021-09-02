@@ -321,8 +321,8 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
             #print("No action feasible for the human")
             return False
         for ag in new_possible_agents:
-            seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action=ag[uncontrollable_agent_name].plan[-1])
-        #print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
+            _seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action=ag[uncontrollable_agent_name].plan[-1])
+        # print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
         return True
     if task.name in agents[agent_name].methods:
         decompos = agents[agent_name].methods[task.name]
@@ -363,7 +363,7 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
             return False
         else:
             for ag in reachable_agents:
-                seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
+                _seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
             return True
     return False
 

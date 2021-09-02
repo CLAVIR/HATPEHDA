@@ -245,7 +245,8 @@ def initialize(initial_agents, all_branches, attributes):
 
     # Creates the steps
     step_agents = deepcopy(initial_agents)
-    for action in plan:
+    for action in plan[1:]:
+
         # Removes IDLE action from the steps
         if action.name == "IDLE":
             continue

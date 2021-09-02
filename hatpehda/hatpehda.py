@@ -291,7 +291,19 @@ undesired_sequence_functions = []
 
 def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
     result = _seek_plan_robot(agents, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
+
     _merge_sols(sols)
+
+    # Add begin action for each solution
+    begin_action = Operator("BEGIN", [], "human", None, None, None)
+    for s in sols:
+        first_action = get_first_action(s)
+        if first_action.name != "BEGIN":
+            first_action.predecessor = begin_action
+            first_action.previous = begin_action
+            if first_action not in begin_action.next:
+                begin_action.next.append(first_action)
+
     return result
 
 def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
@@ -630,16 +642,17 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
             return min_cost
 
     # Add begin action for each solution
-    begin_action = Operator("BEGIN", [], "human", None, None, None)
-    cost_dict["BEGIN"] = 0.0
-    for s in sols:
-        first_action = get_first_action(s)
-        if first_action.name != "BEGIN":
-            first_action.predecessor = begin_action
-            if first_action not in begin_action.next:
-                begin_action.next.append(first_action)
+    # begin_action = Operator("BEGIN", [], "human", None, None, None)
+    # cost_dict["BEGIN"] = 0.0
+    # for s in sols:
+    #     first_action = get_first_action(s)
+    #     if first_action.name != "BEGIN":
+    #         first_action.predecessor = begin_action
+    #         if first_action not in begin_action.next:
+    #             begin_action.next.append(first_action)
 
     # Explore policies
+    begin_action = get_first_action(sols[0])
     act = copy.deepcopy(begin_action)
     cost = explore_policy(agents, act, 0)
 

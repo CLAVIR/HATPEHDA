@@ -175,19 +175,6 @@ if __name__ == "__main__":
     initial_state.available = {"zone": ["red_cube", "green_cube", "blue_cube"]}
     initial_state.individuals = {"Cube": ["red_cube", "green_cube", "blue_cube"]}
     initial_state.weights = {"red_cube": 1, "green_cube": 2, "blue_cube": 3}
-    initial_state.attributes = {    "isHolding": initial_state.isHolding,
-                                    "isPlaced": initial_state.isPlaced,
-                                    "individuals": initial_state.individuals,
-                                    "weights": initial_state.weights,
-                                    "available": initial_state.available}
-
-    # state.isHolding["robot"] = ["red_cube"]
-    # next_state = deepcopy(state)
-    # next_state.isHolding["robot"] = []
-    # next_state.isPlaced["zone"] = ["red_cube"]
-    #
-    # modifs = compute_effects(state, next_state, state.attributes)
-    # print(modifs)
 
     # Set cost functions
     hatpehda.set_idle_cost_function(cost_idle)
@@ -242,7 +229,7 @@ if __name__ == "__main__":
     # gui.show_plan(hatpehda.get_last_actions(best_plan), "robot", "human", with_abstract=False)
 
     print("Compute_casual_links")
-    supports, threats, steps = compute_causal_links(hatpehda.agents, all_branches, initial_state.attributes)
+    supports, threats, steps = compute_causal_links(hatpehda.agents, all_branches)
     # print("supports = ")
     # for sup in supports:
     #     print("  {} => {}".format(sup.step.action, sup.target.action))

@@ -157,10 +157,6 @@ if __name__ == "__main__":
     initial_state.at = {"robot": "l1", "human": "l1"}
     initial_state.holding = {"robot": [], "human": []}
     initial_state.built = {"built": []}
-    initial_state.attributes = {    "at": initial_state.at,
-                                    "holding": initial_state.holding,
-                                    "objLoc": initial_state.objLoc,
-                                    "built": initial_state.built}
 
     # Robot
     hatpehda.declare_operators("robot", *ctrl_operators)
@@ -210,7 +206,7 @@ if __name__ == "__main__":
     # gui.show_plan(hatpehda.get_last_actions(best_plan), "robot", "human", with_abstract=False)
 
     print("Compute_casual_links")
-    supports, threats, steps = compute_causal_links(hatpehda.agents, all_branches, initial_state.attributes)
+    supports, threats, steps = compute_causal_links(hatpehda.agents, all_branches)
     # print("supports = ")
     # for sup in supports:
     #     print("  {} => {}".format(sup.step.action, sup.target.action))

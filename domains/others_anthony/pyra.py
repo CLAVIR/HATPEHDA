@@ -194,7 +194,7 @@ if __name__ == "__main__":
     # gui.show_plan(hatpehda.get_last_actions(best_plan), "robot", "human", with_abstract=False)
 
     print("Compute_casual_links")
-    supports, threats, steps = compute_causal_links(hatpehda.agents, all_branches)
+    supports, threats = compute_causal_links(hatpehda.agents, all_branches)
     # print("supports = ")
     # for sup in supports:
     #     print("  {} => {}".format(sup.step.action, sup.target.action))

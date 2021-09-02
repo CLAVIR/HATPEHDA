@@ -93,7 +93,6 @@ def show_all_bis(actions, controlable_agent, uncontrolable_agent, supports=[], t
     if causal_links != "without" and causal_links != "with" and causal_links != "only":
         causal_link = "with"
     if causal_links == "only":
-        with_begin = True
         with_abstract = False
 
     for action in actions:

@@ -422,18 +422,18 @@ def compute_causal_links(agents, all_branches):
 
     # Converts the plans to lists of actions
     plans = treat_plans(all_branches)
-    plan = plans[0]
-    # print("plan:")
-    # for action in plan:
-    #     print("  {}".format(action))
 
-    # Initialization
-    steps = initialize(initial_agents, plan)
+    # For each plan in the given possible plans
+    supports = []
+    threats = []
+    for plan in plans:
+        # Initialization
+        steps = initialize(initial_agents, plan)
 
-    # Find supports
-    supports = look_for_supports(steps, initial_agents)
+        # Find supports
+        supports += look_for_supports(steps, initial_agents)
 
-    # Find  threats in the plan
-    threats = look_for_threats(steps)
+        # Find  threats in the plan
+        threats += look_for_threats(steps)
 
-    return supports, threats, steps
+    return supports, threats

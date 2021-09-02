@@ -142,8 +142,14 @@ def building(agents, self_state, self_name):
     tasks.append(("build", "a", "b"))
     return tasks
 
+def human_method1(agents, self_state, self_name):
+    return [("move", "l1", "l2"), ("drop", "b")]
+
+def human_method2(agents, self_state, self_name):
+    return [("move", "l1", "l3"), ("drop", "b")]
+
 ctrl_methods = [("robot_build", robot_build), ("get_obj", get_obj), ("building", building)]
-unctrl_methods = []
+unctrl_methods = [("human_action", human_method1, human_method2)]
 
 ######################################################
 ######################## MAIN ########################
@@ -153,9 +159,9 @@ if __name__ == "__main__":
     # Initial state
     initial_state = hatpehda.State("init")
     initial_state.locations = {"locs": ["l1", "l2", "l3"]} # constant
-    initial_state.objLoc = {"a": "l1", "b": "l2"}
+    initial_state.objLoc = {"a": "l1", "b": "human"}
     initial_state.at = {"robot": "l1", "human": "l1"}
-    initial_state.holding = {"robot": [], "human": []}
+    initial_state.holding = {"robot": [], "human": ["b"]}
     initial_state.built = {"built": []}
 
     # Robot
@@ -174,8 +180,8 @@ if __name__ == "__main__":
     human_state = deepcopy(initial_state)
     human_state.__name__ = "human_init"
     hatpehda.set_state("human", human_state)
-    hatpehda.add_tasks("human", [])
-    # hatpehda.add_tasks("human", [("drop", "a"), ("move", "l1", "l2"), ("drop", "b")])
+    # hatpehda.add_tasks("human", [])
+    hatpehda.add_tasks("human", [("human_action",)])
 
 
     # Seek all possible plans #
@@ -206,7 +212,7 @@ if __name__ == "__main__":
     # gui.show_plan(hatpehda.get_last_actions(best_plan), "robot", "human", with_abstract=False)
 
     print("Compute_casual_links")
-    supports, threats, steps = compute_causal_links(hatpehda.agents, all_branches)
+    supports, threats = compute_causal_links(hatpehda.agents, all_branches)
     # print("supports = ")
     # for sup in supports:
     #     print("  {} => {}".format(sup.step.action, sup.target.action))

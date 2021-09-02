@@ -368,7 +368,7 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
 
         # For each possible action of the human, plan for the robot
         for ag in new_possible_agents:
-            seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action=ag[uncontrollable_agent_name].plan[-1])
+            _seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action=ag[uncontrollable_agent_name].plan[-1])
         # print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
         return True
 
@@ -419,7 +419,7 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
             return False
         else:
             for ag in reachable_agents:
-                seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
+                _seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
             return True
 
     return False

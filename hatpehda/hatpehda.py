@@ -682,11 +682,3 @@ def get_last_actions(action):
         for act in action.next:
             actions += get_last_actions(act)
         return actions
-
-def get_last_actions_bis(action):
-        if action.next is None or action.next == []:
-            return [action]
-        actions = [action]
-        for act in action.next:
-            actions += get_last_actions(act)
-        return actions

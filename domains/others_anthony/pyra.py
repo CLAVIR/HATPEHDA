@@ -202,9 +202,10 @@ if __name__ == "__main__":
     # for threat in threats:
     #     print("  {} => {}".format(threat.step.action, threat.target.action))
 
-    if len(sys.argv) == 4 :
+    if len(sys.argv) >= 4 :
         with_begin_p = sys.argv[1].lower() == "true"
         with_abstract_p = sys.argv[2].lower() == "true"
         causal_links_p = sys.argv[3].lower()
-        gui.show_all(hatpehda.get_last_actions_bis(best_plan), "robot", "human", supports=supports, threats=threats,
-            with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links=causal_links_p)
+        constraint_causal_edges_p = sys.argv[4].lower() if len(sys.argv) >= 5 else "true"
+        gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
+            with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links=causal_links_p, constraint_causal_edges=constraint_causal_edges_p)

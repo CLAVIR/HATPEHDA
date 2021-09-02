@@ -32,7 +32,7 @@ def show_plan(actions, controlable_agent, uncontrolable_agent, with_abstract=Tru
 
     dot.render("graph_gui_hatpehda", view=True)
 
-def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract=True, with_begin=True, causal_links="with"):
+def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract=True, with_begin=True, causal_links="with", constraint_causal_edges="true"):
     # Kill other graphs and remove previous files
     os.system("pkill -f 'ristretto'")
     os.system("find .. -name \"graph_gui_hatpehda*\" -exec rm {} \;")
@@ -44,6 +44,7 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
     if causal_links != "without" and causal_links != "with" and causal_links != "only":
         causal_link = "with"
     if causal_links == "only":
+        constraint_causal_edges = "true"
         with_abstract = False
 
     for action in actions:
@@ -90,8 +91,8 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
             if with_begin or (sup.step.action.name != "BEGIN" and sup.target.action.name!= "BEGIN"):
                 edge_from = "BEGIN" if sup.step.action.name == "BEGIN" else str(sup.step.action.id)
                 edge_to = "BEGIN" if sup.target.action.name == "BEGIN" else str(sup.target.action.id)
-                dot.edge(edge_from, edge_to, color="#32de10", label=str("sup"))
+                dot.edge(edge_from, edge_to, color="#32de10", label=str("sup"), constraint=constraint_causal_edges)
         for threat in threats:
-            dot.edge(str(threat.target.action.id), str(threat.step.action.id), color="#ff0000", label=str("threat"), dir='back')
+            dot.edge(str(threat.target.action.id), str(threat.step.action.id), color="#ff0000", label=str("threat"), dir='back', constraint=constraint_causal_edges)
 
     dot.render("graph_gui_hatpehda", view=True)

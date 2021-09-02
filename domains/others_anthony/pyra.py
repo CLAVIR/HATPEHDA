@@ -206,5 +206,5 @@ if __name__ == "__main__":
         with_begin_p = sys.argv[1].lower() == "true"
         with_abstract_p = sys.argv[2].lower() == "true"
         causal_links_p = sys.argv[3].lower()
-        gui.show_all_bis(hatpehda.get_last_actions_bis(best_plan), "robot", "human", supports=supports, threats=threats,
+        gui.show_all(hatpehda.get_last_actions_bis(best_plan), "robot", "human", supports=supports, threats=threats,
             with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links=causal_links_p)

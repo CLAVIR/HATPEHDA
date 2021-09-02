@@ -32,56 +32,7 @@ def show_plan(actions, controlable_agent, uncontrolable_agent, with_abstract=Tru
 
     dot.render("graph_gui_hatpehda", view=True)
 
-def show_all(actions, supports, threats, controlable_agent, uncontrolable_agent, with_abstract=True, with_begin=True):
-    dot = Digraph(comment='Plan', format="png")
-    dot.attr(fontsize="20")
-    plotted_edge = set()
-
-    for action in actions:
-        while action is not None:
-            if action.name == "BEGIN" and not with_begin:
-                action = None
-                continue
-            color = "#AAAAFF" if action.agent == controlable_agent else "#FFFFAA"
-            color_darker = "#5555CC" if action.agent == controlable_agent else "#CCCC55"
-            shape = "octagon" if action.name == "IDLE" else "ellipse"
-            node_name = "BEGIN" if action.name == "BEGIN" else str(action.id)
-            dot.node(str(node_name), action.name + "\n(" + ",".join(map(lambda x: str(x), action.parameters)) + ")", style="filled", fillcolor=color, shape=shape)
-            why = action.why
-            how = action
-            if with_abstract:
-                while why is not None:
-                    if (why.id, how.id) not in plotted_edge:
-                        dot.node(str(why.id), why.name, shape="rectangle", style="filled", fillcolor=color_darker)
-                        if with_begin or (why.name != "BEGIN" and how.name != "BEGIN"):
-                            edge_from = "BEGIN" if why.name == "BEGIN" else str(why.id)
-                            edge_to = "BEGIN" if how.name == "BEGIN" else str(how.id)
-                            dot.edge(edge_from, edge_to, color="#999999", label=str(how.decompo_number), fontcolor="#999999")
-                            plotted_edge.add((why.id, how.id))
-
-                    how = why
-                    why = why.why
-
-            if action.previous is not None:
-                if (action.id, action.previous.id) not in plotted_edge:
-                    if with_begin or (action.previous.name != "BEGIN" and action.name != "BEGIN"):
-                        edge_from = "BEGIN" if action.previous.name == "BEGIN" else str(action.previous.id)
-                        edge_to = "BEGIN" if action.name == "BEGIN" else str(action.id)
-                        plotted_edge.add((action.id, action.previous.id))
-                        dot.edge(edge_from, edge_to, color="#FF5555")
-            action = action.previous
-
-    for sup in supports:
-        if with_begin or (sup.step.action.name != "BEGIN" and sup.target.action.name!= "BEGIN"):
-            edge_from = "BEGIN" if sup.step.action.name == "BEGIN" else str(sup.step.action.id)
-            edge_to = "BEGIN" if sup.target.action.name == "BEGIN" else str(sup.target.action.id)
-            dot.edge(edge_from, edge_to, color="#32de10", label=str("sup"))
-    for threat in threats:
-        dot.edge(str(threat.target.action.id), str(threat.step.action.id), color="#E50606", label=str("threat"), dir='back')
-
-    dot.render("graph_gui_hatpehda", view=True)
-
-def show_all_bis(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract=True, with_begin=True, causal_links="with"):
+def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract=True, with_begin=True, causal_links="with"):
     # Kill other graphs and remove previous files
     os.system("pkill -f 'ristretto'")
     os.system("find .. -name \"graph_gui_hatpehda*\" -exec rm {} \;")
@@ -131,7 +82,7 @@ def show_all_bis(actions, controlable_agent, uncontrolable_agent, supports=[], t
                             edge_from = "BEGIN" if action.previous.name == "BEGIN" else str(action.previous.id)
                             edge_to = "BEGIN" if action.name == "BEGIN" else str(action.id)
                             plotted_edge.add((action.id, action.previous.id))
-                            dot.edge(edge_from, edge_to, color="#FF5555")
+                            dot.edge(edge_from, edge_to, color="#000000")
             action = action.previous
 
     if causal_links != "without":
@@ -141,6 +92,6 @@ def show_all_bis(actions, controlable_agent, uncontrolable_agent, supports=[], t
                 edge_to = "BEGIN" if sup.target.action.name == "BEGIN" else str(sup.target.action.id)
                 dot.edge(edge_from, edge_to, color="#32de10", label=str("sup"))
         for threat in threats:
-            dot.edge(str(threat.target.action.id), str(threat.step.action.id), color="#E50606", label=str("threat"), dir='back')
+            dot.edge(str(threat.target.action.id), str(threat.step.action.id), color="#ff0000", label=str("threat"), dir='back')
 
     dot.render("graph_gui_hatpehda", view=True)

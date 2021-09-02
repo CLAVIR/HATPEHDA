@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import sys
 import hatpehda
 from copy import deepcopy
 from hatpehda import gui
@@ -153,9 +153,9 @@ if __name__ == "__main__":
     # Initial state
     initial_state = hatpehda.State("init")
     initial_state.locations = {"locs": ["l1", "l2", "l3"]} # constant
-    initial_state.objLoc = {"a": "human", "b": "human"}
+    initial_state.objLoc = {"a": "l1", "b": "l2"}
     initial_state.at = {"robot": "l1", "human": "l1"}
-    initial_state.holding = {"robot": [], "human": ["a", "b"]}
+    initial_state.holding = {"robot": [], "human": []}
     initial_state.built = {"built": []}
     initial_state.attributes = {    "at": initial_state.at,
                                     "holding": initial_state.holding,
@@ -178,7 +178,8 @@ if __name__ == "__main__":
     human_state = deepcopy(initial_state)
     human_state.__name__ = "human_init"
     hatpehda.set_state("human", human_state)
-    hatpehda.add_tasks("human", [("drop", "a"), ("move", "l1", "l2"), ("drop", "b")])
+    hatpehda.add_tasks("human", [])
+    # hatpehda.add_tasks("human", [("drop", "a"), ("move", "l1", "l2"), ("drop", "b")])
 
 
     # Seek all possible plans #
@@ -217,4 +218,9 @@ if __name__ == "__main__":
     # for threat in threats:
     #     print("  {} => {}".format(threat.step.action, threat.target.action))
 
-    gui.show_all_bis(hatpehda.get_last_actions_bis(best_plan), supports, threats, "robot", "human", with_begin=True, with_abstract=False, causal_links="with")
+    if len(sys.argv) == 4 :
+        with_begin_p = sys.argv[1].lower() == "true"
+        with_abstract_p = sys.argv[2].lower() == "true"
+        causal_links_p = sys.argv[3].lower()
+        gui.show_all_bis(hatpehda.get_last_actions_bis(best_plan), "robot", "human", supports=supports, threats=threats,
+            with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links=causal_links_p)

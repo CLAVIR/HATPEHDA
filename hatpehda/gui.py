@@ -1,4 +1,5 @@
 from graphviz import Digraph
+import os
 
 def show_plan(actions, controlable_agent, uncontrolable_agent, with_abstract=True):
     dot = Digraph(comment='Plan', format="png")
@@ -80,7 +81,11 @@ def show_all(actions, supports, threats, controlable_agent, uncontrolable_agent,
 
     dot.render("graph_gui_hatpehda", view=True)
 
-def show_all_bis(actions, supports, threats, controlable_agent, uncontrolable_agent, with_abstract=True, with_begin=True, causal_links="with"):
+def show_all_bis(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract=True, with_begin=True, causal_links="with"):
+    # Kill other graphs and remove previous files
+    os.system("pkill -f 'ristretto'")
+    os.system("find .. -name \"graph_gui_hatpehda*\" -exec rm {} \;")
+
     dot = Digraph(comment='Plan', format="png")
     dot.attr(fontsize="20")
     plotted_edge = set()

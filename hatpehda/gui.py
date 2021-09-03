@@ -32,7 +32,7 @@ def show_plan(actions, controlable_agent, uncontrolable_agent, with_abstract=Tru
 
     dot.render("graph_gui_hatpehda", view=True)
 
-def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract=True, with_begin=True, causal_links="with", constraint_causal_edges="true"):
+def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract="true", with_begin="true", causal_links="with", constraint_causal_edges="true"):
     # Kill other graphs and remove previous files
     os.system("pkill -f 'ristretto'")
     os.system("find .. -name \"graph_gui_hatpehda*\" -exec rm {} \;")
@@ -45,7 +45,7 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
         causal_link = "with"
     if causal_links == "only":
         constraint_causal_edges = "true"
-        with_abstract = False
+        with_abstract = "false"
 
     for action in actions:
         while action is not None:
@@ -62,7 +62,7 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
             dot.node(str(node_name), action.name + "\n(" + ",".join(map(lambda x: str(x), action.parameters)) + ")", style="filled", fillcolor=color, shape=shape)
             why = action.why
             how = action
-            if with_abstract:
+            if with_abstract == "true":
                 while why is not None:
                     if (why.id, how.id) not in plotted_edge:
                         if causal_links != "only":

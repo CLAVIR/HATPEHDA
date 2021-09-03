@@ -189,6 +189,13 @@ if __name__ == "__main__":
     fails = []
     print("Seek all possible plans")
     hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
+    if len(sys.argv) >= 3 :
+        with_begin_p = sys.argv[1].lower()
+        with_abstract_p = sys.argv[2].lower()
+        gui.show_all(sols, "robot", "human", with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links="without")
+    else:
+        gui.show_all(sols, "robot", "human", with_begin=True, with_abstract=True, causal_links="without")
+    input()
     # debug
     # print("len sols = {}".format(len(sols)))
     # for i, s in enumerate(sols):
@@ -202,27 +209,17 @@ if __name__ == "__main__":
     #         s = s.previous
     # print("")
 
-    # gui.show_plan(sols, "robot", "human", with_abstract=True)
-    # input()
-
     # Select the best plan from the ones found above #
     print("Select plan with costs")
     best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, "robot", "human")
-    # print("\npolicy cost", best_cost)
-    # gui.show_plan(hatpehda.get_last_actions(best_plan), "robot", "human", with_abstract=False)
+    gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", with_begin="true", with_abstract="false", causal_links="without")
+    input()
 
     print("Compute_casual_links")
-    supports, threats = compute_causal_links(hatpehda.agents, all_branches)
-    # print("supports = ")
-    # for sup in supports:
-    #     print("  {} => {}".format(sup.step.action, sup.target.action))
-    # print("threats = ")
-    # for threat in threats:
-    #     print("  {} => {}".format(threat.step.action, threat.target.action))
-
+    supports, threats = compute_causal_links(hatpehda.agents, best_plan)
     if len(sys.argv) >= 4 :
-        with_begin_p = sys.argv[1].lower() == "true"
-        with_abstract_p = sys.argv[2].lower() == "true"
+        with_begin_p = sys.argv[1].lower()
+        with_abstract_p = sys.argv[2].lower()
         causal_links_p = sys.argv[3].lower()
         constraint_causal_edges_p = sys.argv[4].lower() if len(sys.argv) >= 5 else "true"
         gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,

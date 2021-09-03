@@ -3,6 +3,8 @@
 from copy import deepcopy
 import hatpehda
 from hatpehda.hatpehda import Operator
+from hatpehda.hatpehda import get_last_actions
+from hatpehda.hatpehda import _backtrack_plan_one_branch
 
 
 #########################################
@@ -54,8 +56,6 @@ def set_link(links, step, target):
     Creates a new link from step to target and adds it
     only to the given link list if not already in
     """
-    global supports
-    global threats
 
     # Prevents a step to link with itself
     if step.action == target.action:
@@ -220,8 +220,22 @@ def compute_effects(previous_agents, current_agents):
 
 def treat_plans(all_branches):
     # Treats plans #
+    if not isinstance(all_branches, list):
+        last_actions = get_last_actions(all_branches)
+        for action in last_actions:
+            while action is not None:
+                action = action.previous
+        branches = []
+        for last_action in last_actions:
+            last_bis = deepcopy(last_action)
+            first_action = _backtrack_plan_one_branch(last_bis, None)
+            branches.append(first_action)
+    else:
+        branches = all_branches
+
     plans = []
-    for branch in all_branches:
+
+    for branch in branches:
         plan = []
         action = branch
         while action is not None:
@@ -242,8 +256,7 @@ def initialize(initial_agents, plan):
     steps = []
 
     # First action in plan must be BEGIN, without any effects
-    begin_action = Operator("BEGIN", [], "human", None, None, None)
-    first_step = Step(begin_action)
+    first_step = Step(plan[0])
     first_step.agents = initial_agents
     first_step.effects = {"remove":[], "append":[]}
     steps.append(first_step)
@@ -410,6 +423,20 @@ def look_for_threats(steps):
 
     return threats
 
+def remove_double_links(links):
+    newlinks=[]
+
+    for link in links:
+        already_in = False
+        for l in newlinks:
+            if link.step.action.id == l.step.action.id and link.target.action.id == l.target.action.id:
+                already_in = True
+                break
+        if not already_in:
+            newlinks.append(link)
+
+    return newlinks
+
 #############
 # Main algo #
 #############
@@ -435,5 +462,9 @@ def compute_causal_links(agents, all_branches):
 
         # Find  threats in the plan
         threats += look_for_threats(steps)
+
+    # Double links are created with common action at the beginning of every plan
+    supports = remove_double_links(supports)
+    threats = remove_double_links(threats)
 
     return supports, threats

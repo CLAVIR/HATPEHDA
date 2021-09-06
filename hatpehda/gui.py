@@ -7,8 +7,8 @@ def show_plan(actions, controlable_agent, uncontrolable_agent, with_abstract=Tru
 
     for action in actions:
         while action is not None:
-            color = "#AAAAFF" if action.agent == controlable_agent else "#FFFFAA"
-            color_darker = "#5555CC" if action.agent == controlable_agent else "#CCCC55"
+            color = "#A4C7FF" if action.agent == controlable_agent else "#FFDB9B"
+            color_darker = "#5194FD" if action.agent == controlable_agent else "#FFBA40"
             shape = "octagon" if action.name == "IDLE" else "ellipse"
             dot.node(str(action.id), action.name + "\n(" + ",".join(map(lambda x: str(x), action.parameters)) + ")", style="filled", fillcolor=color, shape=shape)
             why = action.why

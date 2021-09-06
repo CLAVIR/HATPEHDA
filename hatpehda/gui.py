@@ -49,7 +49,7 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
 
     for action in actions:
         while action is not None:
-            if action.name == "BEGIN" and not with_begin:
+            if action.name == "BEGIN" and not with_begin=="true":
                 action = None
                 continue
             if action.name == "IDLE" and causal_links == "only":
@@ -67,7 +67,7 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
                     if (why.id, how.id) not in plotted_edge:
                         if causal_links != "only":
                             dot.node(str(why.id), why.name, shape="rectangle", style="filled", fillcolor=color_darker)
-                            if with_begin or (why.name != "BEGIN" and how.name != "BEGIN"):
+                            if with_begin=="true" or (why.name != "BEGIN" and how.name != "BEGIN"):
                                 edge_from = "BEGIN" if why.name == "BEGIN" else str(why.id)
                                 edge_to = "BEGIN" if how.name == "BEGIN" else str(how.id)
                                 dot.edge(edge_from, edge_to, color="#999999", label=str(how.decompo_number), fontcolor="#999999")
@@ -79,7 +79,7 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
             if action.previous is not None:
                 if (action.id, action.previous.id) not in plotted_edge:
                     if causal_links != "only":
-                        if with_begin or (action.previous.name != "BEGIN" and action.name != "BEGIN"):
+                        if with_begin=="true" or (action.previous.name != "BEGIN" and action.name != "BEGIN"):
                             edge_from = "BEGIN" if action.previous.name == "BEGIN" else str(action.previous.id)
                             edge_to = "BEGIN" if action.name == "BEGIN" else str(action.id)
                             plotted_edge.add((action.id, action.previous.id))
@@ -88,7 +88,7 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
 
     if causal_links != "without":
         for sup in supports:
-            if with_begin or (sup.step.action.name != "BEGIN" and sup.target.action.name!= "BEGIN"):
+            if with_begin=="true" or (sup.step.action.name != "BEGIN" and sup.target.action.name!= "BEGIN"):
                 edge_from = "BEGIN" if sup.step.action.name == "BEGIN" else str(sup.step.action.id)
                 edge_to = "BEGIN" if sup.target.action.name == "BEGIN" else str(sup.target.action.id)
                 dot.edge(edge_from, edge_to, color="#32de10", label=str("sup"), constraint=constraint_causal_edges)

@@ -66,7 +66,7 @@ def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threa
                 while why is not None:
                     if (why.id, how.id) not in plotted_edge:
                         if causal_links != "only":
-                            dot.node(str(why.id), why.name, shape="rectangle", style="filled", fillcolor=color_darker)
+                            dot.node(str(why.id), why.name + "\n(" + ",".join(map(lambda x: str(x), why.parameters)) + ")", shape="rectangle", style="filled", fillcolor=color_darker)
                             if with_begin=="true" or (why.name != "BEGIN" and how.name != "BEGIN"):
                                 edge_from = "BEGIN" if why.name == "BEGIN" else str(why.id)
                                 edge_to = "BEGIN" if how.name == "BEGIN" else str(how.id)

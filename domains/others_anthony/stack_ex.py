@@ -130,7 +130,7 @@ def getAndPlace(agents, self_state, self_name, color_obj, loc):
         tasks = [("r_makeReachable", obj)]
     elif self_name == "human":
         tasks = [("h_makeReachable", obj)]
-    tasks = tasks + [("pick", obj), ("makeStackReachable",), ("placeUndef", obj,loc)]
+    tasks = tasks + [("tryPick", obj), ("makeStackReachable",), ("placeUndef", obj,loc)]
 
     return tasks
 
@@ -162,6 +162,15 @@ def placeUndef(agents, self_state, self_name, obj, loc):
 
     return [("place", obj, loc_found)]
 
+def tryPick(agents, self_state, self_name, obj):
+    # If already in the other's hands
+    if obj in self_state.holding[self_state.otherAgent[self_name]]:
+        # We remove the next 2 tasks : makeStackReachable and placeUndef
+        # because they are not necessary anymore
+        agents[self_name].tasks = agents[self_name].tasks[2:]
+        return []
+    return [("pick", obj)]
+
 def r_askHelp(agents, self_state, self_name, obj):
     return False
 
@@ -191,6 +200,7 @@ ctrl_methods = [("stack", stack),
                 ("r_makeReachable", r_makeReachable),
                 ("makeStackReachable", makeStackReachable),
                 ("placeUndef", placeUndef),
+                ("tryPick", tryPick),
                 ("r_askHelp", r_askHelp)]
 
 unctrl_methods = [("stack", stack),
@@ -200,6 +210,7 @@ unctrl_methods = [("stack", stack),
                 ("getAndPlace", getAndPlace),
                 ("h_makeReachable", h_makeReachable),
                 ("makeStackReachable", makeStackReachable),
+                ("tryPick", tryPick),
                 ("placeUndef", placeUndef)]
 
 ######################################################

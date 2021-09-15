@@ -279,7 +279,6 @@ def h_punctuallyHelpRobot(agents, self_state, self_name, obj):
 
     color = None
     for key, val in self_state.cubes.items():
-        # print("key={} val={}".format(key, val))
         if obj in val:
             color = key
             break
@@ -287,8 +286,13 @@ def h_punctuallyHelpRobot(agents, self_state, self_name, obj):
 
     for key, val in self_state.solution.items():
         if val == color:
-            loc = key
-            break
+            # Check if not already something there
+            for key2, val2 in self_state.at.items():
+                if val2 == key :
+                    continue
+                else:
+                    loc = key
+                    break
     # print("help punctual Robot loc={}".format(loc))
 
     tasks.append( [("pickAndPlace", obj, loc)] )
@@ -407,7 +411,7 @@ if __name__ == "__main__":
     initial_state.at = {"robot":"side_r",
                         "human":"side_h",
                         "red1":"side_r",
-                        "red2":"side_r",
+                        "red2":"side_h",
                         "green1":"middle",
                         "blue1":"side_h",
                         "yellow1":"middle"}
@@ -433,6 +437,7 @@ if __name__ == "__main__":
     hatpehda.set_state("human", human_state)
     # hatpehda.add_tasks("human", [("stack",)])
 
+    start_time = time.time()
     # Seek all possible plans #
     sols = []
     fails = []
@@ -445,6 +450,8 @@ if __name__ == "__main__":
     else:
         gui.show_all(sols, "robot", "human", with_begin="false", with_abstract="false", causal_links="without")
 
+    elapsed_time = time.time() - start_time
+    print("duration:{}".format(elapsed_time))
 
     # PROBLEM
     # hatpehda.add_tasks("robot", [("stack",)])

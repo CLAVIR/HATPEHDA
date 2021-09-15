@@ -320,6 +320,8 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
     # Else, handle first task to do in the robot agenda
     task = agents[agent_name].tasks[0]
 
+    # print("HATPEHDA> task = {} {} {}".format(task.agent, task.name, task.parameters))
+
     # print("\nagenda = ", end='')
     # for taski in agents[agent_name].tasks:
         # print(" {}{},".format(taski.name, taski.parameters), end='')
@@ -348,7 +350,7 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
         newagents[agent_name].plan.append(action)
 
         # CHECK TRIGGERS OF OTHER AGENTS
-        # check the triggers of every other agent that the robot
+        # check the triggers of every other agent than the robot
         for a in agents:
             if a == agent_name:
                 continue

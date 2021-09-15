@@ -71,41 +71,25 @@ def wait(agents, sef_state, self_name):
     return agents, 1.0
 
     ## ROBOT ##
-def r_askPonctualHelp(agents, self_state, self_name, obj):
-    # print("=== op> {}_askPonctualHelp".format(self_name[0]))
-
-    # print("ponctual agenda before len={} :".format(len(agents[self_name].tasks)))
-    # for task in agents[self_name].tasks:
-        # print(" {} {}".format(task.name, task.parameters))
+def r_askPunctualHelp(agents, self_state, self_name, obj):
+    # print("=== op> {}_askPunctualHelp".format(self_name[0]))
 
     if len(agents[self_name].tasks) > 3:
         agents[self_name].tasks = agents[self_name].tasks[:3]
-
-    # print("ponctual agenda after :")
-    # for task in agents[self_name].tasks:
-        # print(" {} {}".format(task.name, task.parameters))
 
     return agents, 1.0
 
 def r_askSharedGoal(agents, self_state, self_name, task):
     # print("=== op> {}_askSharedGoal".format(self_name[0]))
 
-    # print("agenda before len={} :".format(len(agents[self_name].tasks)))
-    # for task in agents[self_name].tasks:
-        # print(" {} {}".format(task.name, task.parameters))
-
     if len(agents[self_name].tasks) > 4 :
         agents[self_name].tasks = agents[self_name].tasks[:1] + agents[self_name].tasks[4:]
     else:
         agents[self_name].tasks = agents[self_name].tasks[:1]
 
-    # print("agenda after :")
-    # for task in agents[self_name].tasks:
-        # print(" {} {}".format(task.name, task.parameters))
-
     return agents, 1.0
 
-ctrl_operators =    [wait, moveTo, pick, place, r_askPonctualHelp, r_askSharedGoal]
+ctrl_operators =    [wait, moveTo, pick, place, r_askPunctualHelp, r_askSharedGoal]
 unctrl_operators =  [wait, moveTo, pick, place]
 
 
@@ -185,10 +169,10 @@ def pickAndPlace(agents, self_state, self_name, color_obj, loc):
         return []
 
     if self_name == "robot":
-        tasks = [("r_makeReachable", obj)]
+        tasks = [("r_checkReachable", obj)]
     elif self_name == "human":
         tasks = [("h_makeReachable", obj)]
-    tasks = tasks + [("tryPick", obj), ("makeStackReachable",), ("placeUndef", obj,loc)]
+    tasks = tasks + [("pickCheckNotHeld", obj), ("makeStackReachable",), ("placeUndef", obj,loc)]
 
     return tasks
 
@@ -248,7 +232,7 @@ def placeUndef(agents, self_state, self_name, obj, loc):
 
     return [("place", obj, loc_found)]
 
-def tryPick(agents, self_state, self_name, obj):
+def pickCheckNotHeld(agents, self_state, self_name, obj):
     # If already in the other's hands
     if obj in self_state.holding[self_state.otherAgent[self_name]]:
         # We remove the next 2 tasks : makeStackReachable and placeUndef
@@ -258,22 +242,23 @@ def tryPick(agents, self_state, self_name, obj):
     return [("pick", obj)]
 
     ## ROBOT ##
-@hatpehda.multi_decomposition
-def r_makeReachable(agents, self_state, self_name, obj):
-    # print("in r_makeReachable")
-
-    # Maybe [] with pops in agenda like in placeUndef ?
+def r_checkReachable(agents, self_state, self_name, obj):
     if obj in self_state.holding[self_state.otherAgent[self_name]]:
-        return False
+        return []
     if isReachable(self_state, self_name, obj):
         return []
 
-    tasks = []
     # print("reachable move to ={}".format(self_state.at[obj]))
-    tasks.append( [("moveTo", self_state.at[obj])] )
-    tasks.append( [("r_askPonctualHelp", obj), ("wait",), ("stack",)] )
-    tasks.append( [("r_askSharedGoal", "stack")] )
-    return tasks
+    return [("r_makeReachable", obj)]
+
+def r_moveToDec(agents, self_state, self_name, obj):
+    return [("moveTo", self_state.at[obj])]
+
+def r_askPunctualHelpDec(agents, self_state, self_name, obj):
+    return [("r_askPunctualHelp", obj), ("wait",), ("stack",)]
+
+def r_askSharedGoalDec(agents, self_state, self_name, obj):
+    return [("r_askSharedGoal", "stack")]
 
     ## HUMAN ##
 def h_makeReachable(agents, self_state, self_name, obj):
@@ -286,7 +271,7 @@ def h_makeReachable(agents, self_state, self_name, obj):
     return [("moveTo", self_state.at[obj])]
 
 @hatpehda.multi_decomposition
-def h_helpPonctualRobot(agents, self_state, self_name, obj):
+def h_punctuallyHelpRobot(agents, self_state, self_name, obj):
 
     # print("help punctual Robot obj={}".format(obj))
 
@@ -315,10 +300,11 @@ ctrl_methods = [("stack", stack),
                 ("buildBridge", buildBridge),
                 ("buildTop", buildTop),
                 ("pickAndPlace", pickAndPlace),
-                ("r_makeReachable", r_makeReachable),
+                ("r_checkReachable", r_checkReachable),
+                ("r_makeReachable", r_moveToDec, r_askPunctualHelpDec, r_askSharedGoalDec),
                 ("makeStackReachable", makeStackReachable),
                 ("placeUndef", placeUndef),
-                ("tryPick", tryPick)]
+                ("pickCheckNotHeld", pickCheckNotHeld)]
 unctrl_methods = [("stack", stack),
                 ("buildBase", buildBase),
                 ("buildBridge", buildBridge),
@@ -326,8 +312,8 @@ unctrl_methods = [("stack", stack),
                 ("pickAndPlace", pickAndPlace),
                 ("h_makeReachable", h_makeReachable),
                 ("makeStackReachable", makeStackReachable),
-                ("h_helpPonctualRobot", h_helpPonctualRobot),
-                ("tryPick", tryPick),
+                ("h_punctuallyHelpRobot", h_punctuallyHelpRobot),
+                ("pickCheckNotHeld", pickCheckNotHeld),
                 ("placeUndef", placeUndef)]
 
 
@@ -335,10 +321,10 @@ unctrl_methods = [("stack", stack),
 ###################### Triggers ######################
 ######################################################
 
-def h_acceptPonctualHelp(agents, self_state, self_name):
-    if agents["robot"].plan[-1].name == "r_askPonctualHelp":
+def h_acceptPunctualHelp(agents, self_state, self_name):
+    if agents["robot"].plan[-1].name == "r_askPunctualHelp":
         obj = agents["robot"].plan[-1].parameters[0]
-        return [("h_helpPonctualRobot", obj)]
+        return [("h_punctuallyHelpRobot", obj)]
     return False
 
 def h_acceptSharedGoal(agents, self_state, self_name):
@@ -348,7 +334,7 @@ def h_acceptSharedGoal(agents, self_state, self_name):
     return False
 
 ctrl_triggers = []
-unctrl_triggers = [h_acceptPonctualHelp, h_acceptSharedGoal]
+unctrl_triggers = [h_acceptPunctualHelp, h_acceptSharedGoal]
 
 
 ######################################################
@@ -436,7 +422,6 @@ if __name__ == "__main__":
     robot_state.__name__ = "robot_init"
     hatpehda.set_state("robot", robot_state)
     hatpehda.add_tasks("robot", [("stack",)])
-    # hatpehda.add_tasks("robot", [("r_wait",), ("r_wait",), ("r_wait",), ("r_wait",), ("r_wait",), ("r_wait",), ("r_wait",), ("r_wait",), ("r_wait",)])
 
     # Human
     hatpehda.declare_operators("human", *unctrl_operators)

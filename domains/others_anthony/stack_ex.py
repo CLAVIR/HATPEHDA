@@ -5,6 +5,7 @@ from copy import deepcopy
 from hatpehda import gui
 import time
 from hatpehda.causal_links_post_treatment import compute_causal_links
+import pickle
 
 
 ######################################################
@@ -23,7 +24,7 @@ def moveTo(agents, self_state, self_name, loc):
         ag.state.at[self_name] = loc
 
     # print("=== op> {}_moveTo={}".format(self_name[0], loc))
-    return agents, 1.0
+    return agents, 10.0
 
 def pick(agents, self_state, self_name, obj):
     if not isReachable(self_state, self_name, obj):
@@ -77,7 +78,10 @@ def r_askPunctualHelp(agents, self_state, self_name, obj):
     if len(agents[self_name].tasks) > 3:
         agents[self_name].tasks = agents[self_name].tasks[:3]
 
-    return agents, 1.0
+    for ag in agents.values():
+        ag.state.numberAsk["help"] += 2
+
+    return agents, 2.0 * self_state.numberAsk["help"] * self_state.numberAsk["help"]
 
 def r_askSharedGoal(agents, self_state, self_name, task):
     # print("=== op> {}_askSharedGoal".format(self_name[0]))
@@ -87,7 +91,7 @@ def r_askSharedGoal(agents, self_state, self_name, task):
     else:
         agents[self_name].tasks = agents[self_name].tasks[:1]
 
-    return agents, 1.0
+    return agents, 10.0 * self_state.numberAsk["help"]
 
 ctrl_operators =    [wait, moveTo, pick, place, r_askPunctualHelp, r_askSharedGoal]
 unctrl_operators =  [wait, moveTo, pick, place]
@@ -302,7 +306,7 @@ def h_punctuallyHelpRobot(agents, self_state, self_name, obj):
     # print("help punctual Robot loc={}".format(loc))
 
     tasks.append( [("pickAndPlace", obj, loc)] )
-    tasks.append( [("pickAndPlace", obj, "middle")])
+    # tasks.append( [("pickAndPlace", obj, "middle")])
     return tasks
 
 ctrl_methods = [("stack", stack),
@@ -423,6 +427,7 @@ if __name__ == "__main__":
                         "blue1":"side_h",
                         "yellow1":"middle"}
     initial_state.holding = {"robot":[], "human":[]}
+    initial_state.numberAsk = {"help" : 0}
 
     # Robot
     hatpehda.declare_operators("robot", *ctrl_operators)
@@ -444,11 +449,10 @@ if __name__ == "__main__":
     hatpehda.set_state("human", human_state)
     # hatpehda.add_tasks("human", [("stack",)])
 
-    start_time = time.time()
     # Seek all possible plans #
     sols = []
     fails = []
-    # print("Seek all possible plans")
+    print("Seek all possible plans")
     hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
     if len(sys.argv) >= 3 :
         with_begin_p = sys.argv[1].lower()
@@ -456,9 +460,24 @@ if __name__ == "__main__":
         gui.show_all(sols, "robot", "human", with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links="without")
     else:
         gui.show_all(sols, "robot", "human", with_begin="false", with_abstract="false", causal_links="without")
+    input()
 
-    elapsed_time = time.time() - start_time
-    print("duration:{}".format(elapsed_time))
+    # file = open("dump.txt", "wb")
+    # pickle.dump(sols, file)
+
+    # file = open("1_unreach_H_far.txt", "rb")
+    # file = open("1_unreach_H_here.txt", "rb")
+    # file = open("2_unreach_H_here.txt", "rb")
+    # sols = pickle.load(file)
+    # gui.show_all(sols, "robot", "human", with_begin="false", with_abstract="true", causal_links="without")
+    # input()
+
+    # Select the best plan from the ones found above #
+    print("Select plan with costs")
+    best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, "robot", "human")
+    gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", with_begin="false", with_abstract="false", causal_links="without")
+    for i, cost in enumerate(all_costs):
+        print("({}) {}".format(i, cost))
 
     # PROBLEM
     # hatpehda.add_tasks("robot", [("stack",)])

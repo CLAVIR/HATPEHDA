@@ -251,6 +251,12 @@ def r_checkReachable(agents, self_state, self_name, obj):
     # print("reachable move to ={}".format(self_state.at[obj]))
     return [("r_makeReachable", obj)]
 
+def r_involveHuman(agents, self_state, self_name, obj):
+    if self_state.at["human"] == "far":
+        return False
+
+    return [("r_involveHuman", obj)]
+
 def r_moveToDec(agents, self_state, self_name, obj):
     return [("moveTo", self_state.at[obj])]
 
@@ -305,7 +311,8 @@ ctrl_methods = [("stack", stack),
                 ("buildTop", buildTop),
                 ("pickAndPlace", pickAndPlace),
                 ("r_checkReachable", r_checkReachable),
-                ("r_makeReachable", r_moveToDec, r_askPunctualHelpDec, r_askSharedGoalDec),
+                ("r_makeReachable", r_moveToDec, r_involveHuman),
+                ("r_involveHuman", r_askPunctualHelpDec, r_askSharedGoalDec),
                 ("makeStackReachable", makeStackReachable),
                 ("placeUndef", placeUndef),
                 ("pickCheckNotHeld", pickCheckNotHeld)]

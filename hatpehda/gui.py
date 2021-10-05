@@ -32,7 +32,7 @@ def show_plan(actions, controlable_agent, uncontrolable_agent, with_abstract=Tru
 
     dot.render("graph_gui_hatpehda", view=True)
 
-def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract="true", with_begin="true", causal_links="with", constraint_causal_edges="true"):
+def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract="false", with_begin="false", causal_links="without", constraint_causal_edges="true"):
     # Kill other graphs and remove previous files
     os.system("pkill -f 'ristretto'")
     os.system("find .. -name \"graph_gui_hatpehda*\" -exec rm {} \;")

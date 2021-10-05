@@ -119,13 +119,22 @@ cost_dict = {
 
 ### Abstract Tasks
 
+def robot_make_coffee_alone_i(agents, self_state, self_name):
+    return [("robot_make_coffee_alone",)]
+
 @hatpehda.multi_decomposition
 def robot_make_coffee_alone(agents, self_state, self_name):
     return [[("robot_get_water",), ('robot_pour_water_in_machine',), ("robot_get_coffee", ), ("robot_put_coffee_in_machine", )],
             [("robot_get_coffee",), ("robot_put_coffee_in_machine",), ("robot_get_water",), ('robot_pour_water_in_machine',)]]
 
+def robot_collaborate_make_coffee_no_comm_i(agents, self_state, self_name):
+    return [("robot_collaborate_make_coffee_no_comm",)]
+
 def robot_collaborate_make_coffee_no_comm(agents, self_state, self_name):
     return [("robot_ask_human_for_help", "human"), ("robot_help_make_coffee", "human")]
+
+def robot_collaborate_make_coffee_with_belief_update_i(agents, self_state, self_name):
+    return [("robot_collaborate_make_coffee_with_belief_update",)]
 
 @hatpehda.multi_decomposition
 def robot_collaborate_make_coffee_with_belief_update(agents, self_state, self_name):
@@ -192,7 +201,11 @@ def human_get_coffee(agents, self_state, self_name):
 
 
 # We don't know the agents name in advance so we store them here, until we can add the proper agents
-ctrl_methods = [("robot_make_coffee", robot_make_coffee_alone, robot_collaborate_make_coffee_no_comm, robot_collaborate_make_coffee_with_belief_update),
+# ctrl_methods = [("robot_make_coffee", robot_make_coffee_alone, robot_collaborate_make_coffee_no_comm, robot_collaborate_make_coffee_with_belief_update),
+ctrl_methods = [("robot_make_coffee", robot_make_coffee_alone_i, robot_collaborate_make_coffee_no_comm_i, robot_collaborate_make_coffee_with_belief_update_i),
+                ("robot_make_coffee_alone", robot_make_coffee_alone),
+                ("robot_collaborate_make_coffee_no_comm", robot_collaborate_make_coffee_no_comm),
+                ("robot_collaborate_make_coffee_with_belief_update", robot_collaborate_make_coffee_with_belief_update),
                 ("robot_help_make_coffee", robot_help_make_coffee),
                 ("robot_get_coffee", robot_get_coffee)]
 unctrl_methods = [("human_help_make_coffee", human_help_make_coffee), ("human_get_coffee", human_get_coffee)]
@@ -251,4 +264,3 @@ if __name__ == "__main__":
 
     # regHandler.export_log("robot_planning")
     # regHandler.cleanup()
-

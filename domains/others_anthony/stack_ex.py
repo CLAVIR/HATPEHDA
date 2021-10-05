@@ -6,7 +6,12 @@ from hatpehda import gui
 import time
 from hatpehda.causal_links_post_treatment import compute_causal_links
 import pickle
+import rospy
+from hatpehda import ros
+from hatpehda.ros import RosNode
 
+
+r_node = None
 
 ######################################################
 ################### Cost functions ###################
@@ -91,6 +96,9 @@ def r_askSharedGoal(agents, self_state, self_name, task):
     else:
         agents[self_name].tasks = agents[self_name].tasks[:1]
 
+    for ag in agents.values():
+        ag.state.numberAsk["help"] += 1
+
     return agents, 10.0 * self_state.numberAsk["help"]
 
 ctrl_operators =    [wait, moveTo, pick, place, r_askPunctualHelp, r_askSharedGoal]
@@ -174,7 +182,7 @@ def pickAndPlace(agents, self_state, self_name, color_obj, loc):
 
     if self_name == "robot":
         tasks = [("r_checkReachable", "pickAndPlace", obj, loc)]
-    elif self_name == "human":
+    else:
         tasks = [("h_makeReachable", obj)]
     tasks = tasks + [("pickCheckNotHeld", obj), ("makeStackReachable",), ("placeUndef", obj,loc)]
 
@@ -256,7 +264,7 @@ def r_checkReachable(agents, self_state, self_name, task, obj, loc):
     return [("r_makeReachable", task, obj, loc)]
 
 def r_involveHuman(agents, self_state, self_name, task, obj, loc):
-    if self_state.at["human"] == "far":
+    if self_state.at[self_state.otherAgent[self_name]] == "far":
         return False
 
     color = None
@@ -312,7 +320,7 @@ def h_punctuallyHelpRobot(agents, self_state, self_name, task, obj, loc):
     # print("help punctual Robot loc={}".format(loc))
 
     tasks.append( [("pickAndPlace", obj, loc)] )
-    # tasks.append( [("pickAndPlace", obj, "middle")])
+    tasks.append( [("pickAndPlace", obj, "middle")])
     return tasks
 
 ctrl_methods = [("stack", stack),
@@ -418,56 +426,71 @@ def isReachable(self_state, self_name, obj):
 ######################## MAIN ########################
 ######################################################
 
-if __name__ == "__main__":
+def on_new_plan_req(ctrl_agents, unctrl_agent):
+    # hatpehda.reset_planner()
+
+    if len(ctrl_agents.keys()) != 1:
+        print("Only supports one ctrlable agent")
+        return
+    if len(unctrl_agent.keys()) != 1:
+        print("Only supports one unctrlable agent")
+        return
+    robot_name = list(ctrl_agents.keys())[0]
+    human_name = list(unctrl_agent.keys())[0]
+    # robot_name = "robot"
+    # human_name = "human"
+    print("in request, robot_name={}, human_name={}".format(robot_name, human_name))
+
     # Initial state
     initial_state = hatpehda.State("init")
     initial_state.locations = {"base":["b1", "b2"], "bridge":["br"], "top":["t1", "t2"], "table":["side_r", "side_h", "middle", "side_right"]}
     initial_state.cubes = {"red":["red1", "red2"], "green":["green1"], "blue":["blue1"], "yellow":["yellow1"]}
-    initial_state.otherAgent = {"robot": "human", "human": "robot"}
-    initial_state.locStack = {"robot": "side_r", "human": "side_h"}
+    initial_state.otherAgent = {robot_name: human_name, human_name: robot_name}
+    initial_state.locStack = {robot_name: "side_r", human_name: "side_h"}
     initial_state.solution = {"b1":"red", "b2":"red", "br":"green", "t1":"blue", "t2":"yellow"}
 
-    initial_state.at = {"robot":"side_r",
-                        "human":"side_h",
+    initial_state.at = {robot_name:"side_r",
+                        human_name:"side_h",
                         "red1":"side_r",
                         "red2":"side_h",
                         "green1":"middle",
                         "blue1":"side_h",
                         "yellow1":"middle"}
-    initial_state.holding = {"robot":[], "human":[]}
+    initial_state.holding = {robot_name:[], human_name:[]}
     initial_state.numberAsk = {"help" : 0}
 
     # Robot
-    hatpehda.declare_operators("robot", *ctrl_operators)
+    hatpehda.declare_operators(robot_name, *ctrl_operators)
     for me in ctrl_methods:
-        hatpehda.declare_methods("robot", *me)
-    hatpehda.declare_triggers("robot", *ctrl_triggers)
+        hatpehda.declare_methods(robot_name, *me)
+    hatpehda.declare_triggers(robot_name, *ctrl_triggers)
     robot_state = deepcopy(initial_state)
-    robot_state.__name__ = "robot_init"
-    hatpehda.set_state("robot", robot_state)
-    hatpehda.add_tasks("robot", [("stack",)])
+    robot_state.__name__ = robot_name + "_init"
+    hatpehda.set_state(robot_name, robot_state)
+    hatpehda.add_tasks(robot_name, [("stack",)])
 
     # Human
-    hatpehda.declare_operators("human", *unctrl_operators)
+    hatpehda.declare_operators(human_name, *unctrl_operators)
     for me in unctrl_methods:
-        hatpehda.declare_methods("human", *me)
-    hatpehda.declare_triggers("human", *unctrl_triggers)
+        hatpehda.declare_methods(human_name, *me)
+    hatpehda.declare_triggers(human_name, *unctrl_triggers)
     human_state = deepcopy(initial_state)
-    human_state.__name__ = "human_init"
-    hatpehda.set_state("human", human_state)
-    # hatpehda.add_tasks("human", [("stack",)])
+    human_state.__name__ = human_name + "_init"
+    hatpehda.set_state(human_name, human_state)
+    # hatpehda.add_tasks(human_name, [("stack",)])
+
+    print("still in request :")
+    for ag in hatpehda.agents:
+        print(ag)
 
     # Seek all possible plans #
     sols = []
     fails = []
-    print("Seek all possible plans")
-    hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
-    if len(sys.argv) >= 3 :
-        with_begin_p = sys.argv[1].lower()
-        with_abstract_p = sys.argv[2].lower()
-        gui.show_all(sols, "robot", "human", with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links="without")
-    else:
-        gui.show_all(sols, "robot", "human", with_begin="false", with_abstract="false", causal_links="without")
+    # print("Seek all possible plans")
+    start_explore = time.time()
+    hatpehda.seek_plan_robot(hatpehda.agents, robot_name, sols, human_name, fails)
+    end_explore = time.time()
+    gui.show_all(sols, robot_name, human_name, with_begin="false", with_abstract="false")
     input()
 
     # file = open("dump.txt", "wb")
@@ -481,11 +504,23 @@ if __name__ == "__main__":
     # input()
 
     # Select the best plan from the ones found above #
-    print("Select plan with costs")
-    best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, "robot", "human")
-    gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", with_begin="false", with_abstract="false", causal_links="without")
+    # print("Select plan with costs")
+    start_select = time.time()
+    best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, robot_name, human_name)
+    end_select = time.time()
+    gui.show_all(hatpehda.get_last_actions(best_plan), robot_name, human_name, with_begin="false", with_abstract="false")
     for i, cost in enumerate(all_costs):
         print("({}) {}".format(i, cost))
+    # r_node.send_plan(hatpehda.get_last_actions(best_plan), robot_name, human_name)
+
+    print("explore time : {}".format(end_explore-start_explore))
+    print("select time  : {}".format(end_select-start_select))
+
+
+if __name__ == "__main__":
+    r_node = ros.RosNode.start_ros_node("planner", on_new_request = on_new_plan_req)
+    print("Waiting for request ...")
+    r_node.wait_for_request()
 
     # PROBLEM
     # hatpehda.add_tasks("robot", [("stack",)])

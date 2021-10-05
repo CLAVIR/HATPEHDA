@@ -295,7 +295,7 @@ def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_a
     _merge_sols(sols)
 
     # Add begin action for each solution
-    begin_action = Operator("BEGIN", [], "human", None, None, None)
+    begin_action = Operator("BEGIN", [], uncontrollable_agent_name, None, None, None)
     for s in sols:
         first_action = get_first_action(s)
         if first_action.name != "BEGIN":
@@ -324,7 +324,8 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
 
     # print("\nagenda = ", end='')
     # for taski in agents[agent_name].tasks:
-        # print(" {}{},".format(taski.name, taski.parameters), end='')
+    #     print(" {}{},".format(taski.name, taski.parameters), end='')
+    # print("")
     # print("\ntreating task name={}".format(task.name))
 
     # If the first task is an operator known by the robot
@@ -382,6 +383,7 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
 
         # For each possible action of the human, plan for the robot
         for ag in new_possible_agents:
+            # print(" H : {} {}".format(ag["human"].plan[-1].name, ag["human"].plan[-1].parameters))
             _seek_plan_robot(ag, agent_name, sols, uncontrollable_agent_name, fails, previous_action=ag[uncontrollable_agent_name].plan[-1])
         # print("robot plan:", newagents[agent_name].plan, "human plan:", newagents[uncontrollable_agent_name].plan)
         return True

@@ -493,7 +493,7 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     gui.show_all(sols, robot_name, human_name, with_begin="false", with_abstract="false")
     input()
 
-    # file = open("dump.txt", "wb")
+    # file = open("dump.dump", "wb")
     # pickle.dump(sols, file)
 
     # file = open("1_unreach_H_far.txt", "rb")

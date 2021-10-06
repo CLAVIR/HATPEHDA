@@ -54,10 +54,19 @@ def place(agents, self_state, self_name, obj, loc):
 
     # Verif ordre stack
     if loc in self_state.locations["bridge"]:
-        if not isBaseBuilt(self_state, self_name):
+        b1_placed, b2_placed = isBaseBuilt(self_state, self_name)
+        if not b1_placed or not b2_placed:
             return False
-    if loc in self_state.locations["top"]:
+    if loc == "t1":
         if not isBridgeBuilt(self_state, self_name):
+            return False
+    if loc == "t2":
+        previous_block_ok = False
+        for key, val in self_state.at.items():
+            if val == "t1":
+                previous_block_ok = True
+                break
+        if not previous_block_ok:
             return False
 
     # S'il y a deja un objet placé à l'emplacement voulu dans la stack (mais pas de contrainte pour sur la table)
@@ -76,7 +85,7 @@ def wait(agents, sef_state, self_name):
     # print("=== op> {}_wait".format(self_name[0]))
     return agents, 1.0
 
-    ## ROBOT ##
+## ROBOT ##
 def r_askPunctualHelp(agents, self_state, self_name, task, obj, loc):
     # print("=== op> {}_askPunctualHelp".format(self_name[0]))
 
@@ -253,7 +262,7 @@ def pickCheckNotHeld(agents, self_state, self_name, obj):
         return []
     return [("pick", obj)]
 
-    ## ROBOT ##
+## ROBOT ##
 def r_checkReachable(agents, self_state, self_name, task, obj, loc):
     if obj in self_state.holding[self_state.otherAgent[self_name]]:
         return []
@@ -284,7 +293,7 @@ def r_askPunctualHelpDec(agents, self_state, self_name, task, obj, loc):
 def r_askSharedGoalDec(agents, self_state, self_name, task, obj, loc):
     return [("r_askSharedGoal", "stack")]
 
-    ## HUMAN ##
+## HUMAN ##
 def h_makeReachable(agents, self_state, self_name, obj):
     # print("in h_makeReachable")
     if obj in self_state.holding[self_state.otherAgent[self_name]]:
@@ -429,17 +438,16 @@ def isReachable(self_state, self_name, obj):
 def on_new_plan_req(ctrl_agents, unctrl_agent):
     # hatpehda.reset_planner()
 
-    if len(ctrl_agents.keys()) != 1:
-        print("Only supports one ctrlable agent")
-        return
-    if len(unctrl_agent.keys()) != 1:
-        print("Only supports one unctrlable agent")
-        return
-    robot_name = list(ctrl_agents.keys())[0]
-    human_name = list(unctrl_agent.keys())[0]
-    # robot_name = "robot"
-    # human_name = "human"
-    print("in request, robot_name={}, human_name={}".format(robot_name, human_name))
+    # if len(ctrl_agents.keys()) != 1:
+    #     print("Only supports one ctrlable agent")
+    #     return
+    # if len(unctrl_agent.keys()) != 1:
+    #     print("Only supports one unctrlable agent")
+    #     return
+    # robot_name = list(ctrl_agents.keys())[0]
+    # human_name = list(unctrl_agent.keys())[0]
+    robot_name = "robot"
+    human_name = "human"
 
     # Initial state
     initial_state = hatpehda.State("init")
@@ -450,9 +458,9 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     initial_state.solution = {"b1":"red", "b2":"red", "br":"green", "t1":"blue", "t2":"yellow"}
 
     initial_state.at = {robot_name:"side_r",
-                        human_name:"side_h",
+                        human_name:"far",
                         "red1":"side_r",
-                        "red2":"side_h",
+                        "red2":"middle",
                         "green1":"middle",
                         "blue1":"side_h",
                         "yellow1":"middle"}
@@ -479,10 +487,6 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     hatpehda.set_state(human_name, human_state)
     # hatpehda.add_tasks(human_name, [("stack",)])
 
-    print("still in request :")
-    for ag in hatpehda.agents:
-        print(ag)
-
     # Seek all possible plans #
     sols = []
     fails = []
@@ -490,8 +494,9 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     start_explore = time.time()
     hatpehda.seek_plan_robot(hatpehda.agents, robot_name, sols, human_name, fails)
     end_explore = time.time()
-    gui.show_all(sols, robot_name, human_name, with_begin="false", with_abstract="false")
-    input()
+    print("explore time : {}".format(end_explore-start_explore))
+    # gui.show_all(sols, robot_name, human_name, with_begin="false", with_abstract="false")
+    # input()
 
     # file = open("dump.dump", "wb")
     # pickle.dump(sols, file)
@@ -508,18 +513,31 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     start_select = time.time()
     best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, robot_name, human_name)
     end_select = time.time()
-    gui.show_all(hatpehda.get_last_actions(best_plan), robot_name, human_name, with_begin="false", with_abstract="false")
+    print("select time  : {}".format(end_select-start_select))
     for i, cost in enumerate(all_costs):
         print("({}) {}".format(i, cost))
+    # gui.show_all(hatpehda.get_last_actions(best_plan), robot_name, human_name, with_begin="false", with_abstract="false")
+    # input()
     # r_node.send_plan(hatpehda.get_last_actions(best_plan), robot_name, human_name)
 
-    print("explore time : {}".format(end_explore-start_explore))
-    print("select time  : {}".format(end_select-start_select))
+    print("Compute_casual_links")
+    supports, threats = compute_causal_links(hatpehda.agents, best_plan)
+    if len(sys.argv) >= 4 :
+        with_begin_p = sys.argv[1].lower()
+        with_abstract_p = sys.argv[2].lower()
+        causal_links_p = sys.argv[3].lower()
+        constraint_causal_edges_p = sys.argv[4].lower() if len(sys.argv) >= 5 else "true"
+        gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
+            with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links=causal_links_p, constraint_causal_edges=constraint_causal_edges_p)
+    else:
+        gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
+            with_begin="false", with_abstract="false", causal_links="true", constraint_causal_edges="false")
 
 
 if __name__ == "__main__":
     r_node = ros.RosNode.start_ros_node("planner", on_new_request = on_new_plan_req)
     print("Waiting for request ...")
+    on_new_plan_req(None, None)
     r_node.wait_for_request()
 
     # PROBLEM

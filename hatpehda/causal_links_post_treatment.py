@@ -51,7 +51,7 @@ def get_state_attributes(state):
             attributes.remove(att)
     return attributes
 
-def set_link(links, step, target):
+def set_link(links, step, target, type):
     """
     Creates a new link from step to target and adds it
     only to the given link list if not already in
@@ -71,9 +71,9 @@ def set_link(links, step, target):
     links.append(new_link)
 
     # Debug #
-    # if links is supports:
+    # if type == "s":
     #     print("support ", end='')
-    # if links is threats:
+    # if type == "t":
     #     print("threat ", end='')
     # print("set_link : {} => {}".format(new_link.step.action, new_link.target.action))
 
@@ -168,7 +168,8 @@ def apply_effect(agents, step):
                 try:
                     getattr(ag.state, rm.attribute)[rm.key].remove(rm.val)
                 except:
-                    print("no value to remove")
+                    # print("no value to remove : step={} rm.attribute={} rm.key={} rm.val={}".format(step.action, rm.attribute, rm.key, rm.val))
+                    continue
 
     return newagents
 
@@ -325,9 +326,8 @@ def look_for_supports(steps, initial_agents):
 
         if step in applicable_steps:
             if not has_supports:
-                set_link(supports, steps[0], step)
+                set_link(supports, steps[0], step, "s")
             # print("A tous ses supports !")
-            continue
         else:
             # print("hum il en manque")
             has_all_its_supports = False
@@ -350,17 +350,22 @@ def look_for_supports(steps, initial_agents):
 
                 # If step i is appicable, step j is a support of step i (step)
                 if step in new_applicable_steps:
-                    set_link(supports, steps[j], step)
+                    set_link(supports, steps[j], step, "s")
 
                 # Check if step has all its supports
                 # Apply effects of all the supports of step from the initial state
+                # print("check if has all its supports, apply known supports :")
                 check_all_agents = deepcopy(initial_agents)
                 for sup in supports:
                     if sup.target.action == step.action:
-                        # print("support {}".format(sup.step.action))
+                        # print("  support {}".format(sup.step.action))
                         check_all_agents = apply_effect(check_all_agents, sup.step)
+                # print_states(check_all_agents)
                 # Check if step is applicable
                 applicable_steps =  get_app_steps(check_all_agents, steps)
+                # print("applicable_steps far :")
+                # for app_step in applicable_steps:
+                    # print("  {}".format(app_step.action))
                 if step in applicable_steps:
                     # print("Has all its supports !")
                     has_all_its_supports = True
@@ -373,7 +378,7 @@ def look_for_supports(steps, initial_agents):
 def look_for_threats(steps):
     threats = []
 
-##### Core algorithm
+    # Core algorithm
     previous_app_steps = []
     for step in steps:
         # print("\n===> THREATS step={}".format(step.action))
@@ -417,7 +422,7 @@ def look_for_threats(steps):
                 # set_link(supports, new_app_step, indep_new_app_step)
             for indep_no_longer_app_step in indep_no_longer_app_steps:
                 # set new_app_step as threat for indep_no_longer_app_step
-                set_link(threats, app_step, indep_no_longer_app_step)
+                set_link(threats, app_step, indep_no_longer_app_step, "t")
 
         previous_app_steps = app_steps
 
@@ -436,6 +441,26 @@ def remove_double_links(links):
             newlinks.append(link)
 
     return newlinks
+
+def remove_bidirectional_threats(threats):
+    removed = False
+    for threat1 in threats:
+        for threat2 in threats:
+            if threat1 == threat2:
+                continue
+            if threat2.step == threat1.target and threat2.target == threat1.step:
+                threats.remove(threat1)
+                threats.remove(threat2)
+                print("removed link {} <=> {}".format(threat1.step.action, threat1.target.action))
+                removed = True
+                break
+        if removed:
+            break
+
+    if removed :
+        remove_bidirectional_threats(threats)
+    else:
+        return None
 
 #############
 # Main algo #
@@ -466,5 +491,6 @@ def compute_causal_links(agents, all_branches):
     # Double links are created with common action at the beginning of every plan
     supports = remove_double_links(supports)
     threats = remove_double_links(threats)
+    remove_bidirectional_threats(threats)
 
     return supports, threats

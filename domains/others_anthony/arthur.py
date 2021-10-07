@@ -188,7 +188,10 @@ if __name__ == "__main__":
     sols = []
     fails = []
     print("Seek all possible plans")
+    start_explore = time.time()
     hatpehda.seek_plan_robot(hatpehda.agents, "robot", sols, "human", fails)
+    end_explore = time.time()
+    print("explore time : {}".format(end_explore-start_explore))
     if len(sys.argv) >= 3 :
         with_begin_p = sys.argv[1].lower()
         with_abstract_p = sys.argv[2].lower()
@@ -211,7 +214,10 @@ if __name__ == "__main__":
 
     # Select the best plan from the ones found above #
     print("Select plan with costs")
+    start_select = time.time()
     best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, "robot", "human")
+    end_select = time.time()
+    print("select time  : {}".format(end_select-start_select))
     gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", with_begin="true", with_abstract="false", causal_links="without")
     input()
 
@@ -224,3 +230,8 @@ if __name__ == "__main__":
         constraint_causal_edges_p = sys.argv[4].lower() if len(sys.argv) >= 5 else "true"
         gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
             with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links=causal_links_p, constraint_causal_edges=constraint_causal_edges_p)
+    else:
+        gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
+            with_begin="false", with_abstract="false", causal_links="true", constraint_causal_edges="true")
+
+

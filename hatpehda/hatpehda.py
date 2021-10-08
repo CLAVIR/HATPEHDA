@@ -54,7 +54,6 @@ class Task():
         self.id = Task.__ID
         Task.__ID += 1
 
-
 class Operator(Task):
     def __init__(self, name, parameters, agent, why, decompo_number, function):
         super().__init__(name, parameters, why, decompo_number, agent)
@@ -75,14 +74,11 @@ class AbstractTask(Task):
         self.how = how  # List of task networks this task has been decomposed into (after each decompo function has been called)
         self.number_of_decompo = number_of_decompo  # How many decomposition this task has (maybe not successful ones)
 
-
-
 class State():
     """A state is just a collection of variable bindings."""
 
     def __init__(self, name):
         self.__name__ = name
-
 
 class Goal():
     """A goal is just a collection of variable bindings."""
@@ -92,7 +88,6 @@ class Goal():
 
 
 ### print_state and print_goal are identical except for the name
-
 def print_state(state, indent=4):
     """Print each variable in state, indented by indent spaces."""
     if state != False:
@@ -103,7 +98,6 @@ def print_state(state, indent=4):
                 print(' =', val)
     else:
         print('False')
-
 
 def print_goal(goal, indent=4):
     """Print each variable in goal, indented by indent spaces."""
@@ -119,13 +113,11 @@ def print_goal(goal, indent=4):
 
 ############################################################
 # Helper functions that may be useful in domain models
-
 def forall(seq, cond):
     """True if cond(x) holds for all x in seq, otherwise False."""
     for x in seq:
         if not cond(x): return False
     return True
-
 
 def find_if(cond, seq):
     """
@@ -150,9 +142,7 @@ class Agent:
         self.plan = []
         self.triggers = []
 
-
 agents = {}  # type: Dict[str, Agent]
-
 
 def declare_operators(agent, *op_list):
     """
@@ -165,7 +155,6 @@ def declare_operators(agent, *op_list):
     agents[agent].operators.update({op.__name__: op for op in op_list})
     return agents
 
-
 def declare_methods(agent, task_name, *method_list):
     """
     Call this once for each task, to tell Pyhop what the methods are.
@@ -177,18 +166,15 @@ def declare_methods(agent, task_name, *method_list):
     agents[agent].methods.update({task_name: list(method_list)})
     return agents
 
-
 def set_state(agent, state):
     if agent not in agents:
         agents[agent] = Agent(agent)
     agents[agent].state = state
 
-
 def set_goal(agent, goal):
     if agent not in agents:
         agents[agent] = Agent(agent)
     agents[agent].goal = goal
-
 
 def add_tasks(agent, tasks, to_agents=None):
     if to_agents is None:
@@ -217,9 +203,9 @@ def reset_planner():
     global agents
     agents = {}
 
+
 ############################################################
 # Decorators for specific operators and methods functions
-
 def multi_decomposition(decompo):
     def prepending(*args, **kwargs):
         result = decompo(*args, **kwargs)
@@ -241,7 +227,6 @@ def print_operators(agent=None):
             print("\t", ', '.join(ag.operators))
     else:
         print('OPERATORS:', ', '.join(agents[agent].operators))
-
 
 def print_methods(agent=None):
     """Print out a table of what the methods are for each task"""
@@ -274,7 +259,6 @@ def set_wait_cost_function(wait_function):
     global wait_cost_function
     wait_cost_function = wait_function
 wait_cost_function = default_cost_wait_function
-
 
 def set_undesired_state_functions(functions):
     global undesired_state_functions

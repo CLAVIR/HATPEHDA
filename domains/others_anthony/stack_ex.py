@@ -533,7 +533,6 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
         gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
             with_begin="false", with_abstract="false", causal_links="true", constraint_causal_edges="false")
 
-
 if __name__ == "__main__":
     r_node = ros.RosNode.start_ros_node("planner", on_new_request = on_new_plan_req)
     print("Waiting for request ...")

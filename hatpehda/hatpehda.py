@@ -23,11 +23,10 @@ import copy
 import sys
 from collections import namedtuple
 from enum import Enum
-############################################################
-# States and goals
 from typing import Dict
 
-
+############################################################
+# States and goals
 class HumanPredictionType(Enum):
     FIRST_APPLICABLE_ACTION = 0
     ALL_APPLICABLE_ACTIONS = 1
@@ -58,6 +57,7 @@ class Operator(Task):
     def __init__(self, name, parameters, agent, why, decompo_number, function):
         super().__init__(name, parameters, why, decompo_number, agent)
         self.function = function
+        self.cost = 0.0
 
     @staticmethod
     def copy_new_id(other):
@@ -217,7 +217,6 @@ def multi_decomposition(decompo):
 
 ############################################################
 # Commands to find out what the operators and methods are
-
 def print_operators(agent=None):
     """Print out the names of the operators"""
     if agent is None:
@@ -245,7 +244,6 @@ def print_methods(agent=None):
 
 ############################################################
 # Cost related functions
-
 def default_cost_idle_function():
     return 0.0
 def set_idle_cost_function(idle_function):
@@ -270,9 +268,9 @@ def set_undesired_sequence_functions(functions):
     undesired_sequence_functions = functions
 undesired_sequence_functions = []
 
+
 ############################################################
 # The actual planner
-
 def seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_agent_name = "human", fails=None, previous_action=None):
     result = _seek_plan_robot(agents, agent_name, sols, uncontrollable_agent_name, fails, previous_action)
 
@@ -328,6 +326,10 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
             return False
 
         # else, if it's feasible
+        # set the cost of the operator
+        agents_after_operator, op_cost = result
+        operator.cost = op_cost
+
         # remove the task from the robot agenda and put it in the robot plan
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
         action = Operator.copy_new_id(task)
@@ -555,7 +557,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
     def explore_policy(agents, action, cost):
         new_agents = copy.deepcopy(agents) # check if needed
 
-        # Virtually apply the action and calculate its cost
+        # Get the cost of the operator
         cost_op = 0.0
         if action.name != "BEGIN":
             if action.name == "IDLE":
@@ -564,15 +566,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
                 cost_op = wait_cost_function()
             else:
                 operator = new_agents[action.agent].operators[action.name]
-                result = operator(new_agents, new_agents[action.agent].state, action.agent  , *action.parameters)
-                if isinstance(result, dict):
-                    new_agents = result
-                    cost_op = cost_dict[action.name]
-                elif isinstance(result, tuple):
-                    new_agents = result[0]
-                    cost_op = result[1]
-                else:
-                    raise TypeError("Conditional plan selection failed operator \"{}\" from agent \"{}\" returned neither a dict nor a tuple. If given a cost_dict it has to return either a dictionary of agents or else a tuple with the agents and a cost".format(action.name, action.agent))
+                cost_op = operator.cost
         cost += cost_op
 
         # Check undesired states

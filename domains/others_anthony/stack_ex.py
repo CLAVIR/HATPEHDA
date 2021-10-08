@@ -436,6 +436,8 @@ def isReachable(self_state, self_name, obj):
 ######################################################
 
 def on_new_plan_req(ctrl_agents, unctrl_agent):
+    print("Request received !")
+    
     # hatpehda.reset_planner()
 
     # if len(ctrl_agents.keys()) != 1:
@@ -458,7 +460,7 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     initial_state.solution = {"b1":"red", "b2":"red", "br":"green", "t1":"blue", "t2":"yellow"}
 
     initial_state.at = {robot_name:"side_r",
-                        human_name:"far",
+                        human_name:"side_h",
                         "red1":"side_r",
                         "red2":"middle",
                         "green1":"middle",
@@ -487,16 +489,16 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     hatpehda.set_state(human_name, human_state)
     # hatpehda.add_tasks(human_name, [("stack",)])
 
-    # Seek all possible plans #
+    # SEEK ALL POSSIBLE PLANS #
     sols = []
     fails = []
-    # print("Seek all possible plans")
+    print("Start exploring ...")
     start_explore = time.time()
     hatpehda.seek_plan_robot(hatpehda.agents, robot_name, sols, human_name, fails)
     end_explore = time.time()
-    print("explore time : {}".format(end_explore-start_explore))
-    # gui.show_all(sols, robot_name, human_name, with_begin="false", with_abstract="false")
-    # input()
+    print("Done exploration time : {}".format(end_explore-start_explore))
+    gui.show_all(sols, robot_name, human_name, with_begin="false", with_abstract="false")
+    input()
 
     # file = open("dump.dump", "wb")
     # pickle.dump(sols, file)
@@ -508,20 +510,24 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     # gui.show_all(sols, "robot", "human", with_begin="false", with_abstract="true", causal_links="without")
     # input()
 
-    # Select the best plan from the ones found above #
+    # SELECT THE BEST PLAN FROM THE ONES FOUND ABOVE #
     # print("Select plan with costs")
+    print("Start selecting a plan ...")
     start_select = time.time()
     best_plan, best_cost, all_branches, all_costs = hatpehda.select_conditional_plan(sols, robot_name, human_name)
     end_select = time.time()
-    print("select time  : {}".format(end_select-start_select))
+    print("Done plan selection time  : {}".format(end_select-start_select))
     for i, cost in enumerate(all_costs):
         print("({}) {}".format(i, cost))
-    # gui.show_all(hatpehda.get_last_actions(best_plan), robot_name, human_name, with_begin="false", with_abstract="false")
-    # input()
+    gui.show_all(hatpehda.get_last_actions(best_plan), robot_name, human_name, with_begin="false", with_abstract="false")
+    input()
     # r_node.send_plan(hatpehda.get_last_actions(best_plan), robot_name, human_name)
 
-    print("Compute_casual_links")
+    print("Start computing causal links ...")
+    start_causal = time.time()
     supports, threats = compute_causal_links(hatpehda.agents, best_plan)
+    end_causal = time.time()
+    print("Done causal links time : {}".format(end_causal-start_causal))
     if len(sys.argv) >= 4 :
         with_begin_p = sys.argv[1].lower()
         with_abstract_p = sys.argv[2].lower()
@@ -532,6 +538,7 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     else:
         gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
             with_begin="false", with_abstract="false", causal_links="true", constraint_causal_edges="false")
+    print("Request done.")
 
 if __name__ == "__main__":
     r_node = ros.RosNode.start_ros_node("planner", on_new_request = on_new_plan_req)

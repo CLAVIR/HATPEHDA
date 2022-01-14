@@ -134,8 +134,8 @@ def find_if(cond, seq):
 class Agent:
     def __init__(self, name):
         self.name = name
-        self.operators = {}
-        self.methods = {}
+        self.operators = {} # type: Dict[str, function]
+        self.methods = {} # type: Dict[str, function]
         self.state = None
         self.goal = None
         self.tasks = []
@@ -327,12 +327,10 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
 
         # else, if it's feasible
         # set the cost of the operator
-        agents_after_operator, op_cost = result
-        operator.cost = op_cost
-
         # remove the task from the robot agenda and put it in the robot plan
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
         action = Operator.copy_new_id(task)
+        action.cost = result[1]
         action.previous = previous_action
         newagents[agent_name].plan.append(action)
 
@@ -470,6 +468,7 @@ def get_all_applicable_actions(agents, agent_name, solutions, previous_action):
             return
         newagents[agent_name].tasks = newagents[agent_name].tasks[1:]
         action = Operator.copy_new_id(task)
+        action.cost = result[1]
         action.previous = previous_action
         newagents[agent_name].plan.append(action)
         for a in agents:
@@ -565,8 +564,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
             elif action.name == "WAIT":
                 cost_op = wait_cost_function()
             else:
-                operator = new_agents[action.agent].operators[action.name]
-                cost_op = operator.cost
+                cost_op = action.cost
         cost += cost_op
 
         # Check undesired states
@@ -591,7 +589,7 @@ def select_conditional_plan(sols, controllable_agent_name, uncontrollable_agent_
                 undesired_sequence_penalty += undesired_sequence_check(first_action)
                 cost += undesired_sequence_penalty
 
-            # print("branch ({}) seq_penalty={} total_cost={}\n".format(len(all_branches)+1, undesired_sequence_penalty, cost))
+            # print("============ branch ({}) seq_penalty={} total_cost={}\n".format(len(all_branches)+1, undesired_sequence_penalty, cost))
             all_branches.append(first_action)
             all_costs.append(cost)
 

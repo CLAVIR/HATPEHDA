@@ -33,6 +33,11 @@ def show_plan(actions, controlable_agent, uncontrolable_agent, with_abstract=Tru
     dot.render("graph_gui_hatpehda", view=True)
 
 def show_all(actions, controlable_agent, uncontrolable_agent, supports=[], threats=[], with_abstract="false", with_begin="false", causal_links="without", constraint_causal_edges="true"):
+    # with_abstract : "true"/"false"
+    # with_begin : "true"/"false"
+    # causal_links : "with"/"without"/"only"
+    # constraint_causal_edges : "true"/"false"
+
     # Kill other graphs and remove previous files
     os.system("pkill -f 'gthumb'")
     os.system("find .. -name \"graph_gui_hatpehda*\" -exec rm {} \;")

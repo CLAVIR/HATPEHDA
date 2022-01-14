@@ -93,9 +93,9 @@ def r_askPunctualHelp(agents, self_state, self_name, task, obj, loc):
         agents[self_name].tasks = agents[self_name].tasks[:3]
 
     for ag in agents.values():
-        ag.state.numberAsk["help"] += 2
+        ag.state.numberAsk["help"] += 1
 
-    return agents, 2.0 * self_state.numberAsk["help"] * self_state.numberAsk["help"]
+    return agents, 5.0 * self_state.numberAsk["help"] * self_state.numberAsk["help"]
 
 def r_askSharedGoal(agents, self_state, self_name, task):
     # print("=== op> {}_askSharedGoal".format(self_name[0]))
@@ -108,7 +108,7 @@ def r_askSharedGoal(agents, self_state, self_name, task):
     for ag in agents.values():
         ag.state.numberAsk["help"] += 1
 
-    return agents, 10.0 * self_state.numberAsk["help"]
+    return agents, 10.0 * self_state.numberAsk["help"] * self_state.numberAsk["help"]
 
 ctrl_operators =    [wait, moveTo, pick, place, r_askPunctualHelp, r_askSharedGoal]
 unctrl_operators =  [wait, moveTo, pick, place]
@@ -329,7 +329,7 @@ def h_punctuallyHelpRobot(agents, self_state, self_name, task, obj, loc):
     # print("help punctual Robot loc={}".format(loc))
 
     tasks.append( [("pickAndPlace", obj, loc)] )
-    tasks.append( [("pickAndPlace", obj, "middle")])
+    # tasks.append( [("pickAndPlace", obj, "middle")])
     return tasks
 
 ctrl_methods = [("stack", stack),
@@ -462,7 +462,7 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     initial_state.at = {robot_name:"side_r",
                         human_name:"side_h",
                         "red1":"side_r",
-                        "red2":"middle",
+                        "red2":"side_h",
                         "green1":"middle",
                         "blue1":"side_h",
                         "yellow1":"middle"}
@@ -506,8 +506,9 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     # file = open("1_unreach_H_far.txt", "rb")
     # file = open("1_unreach_H_here.txt", "rb")
     # file = open("2_unreach_H_here.txt", "rb")
+    # file = open("dump.dump", "rb")
     # sols = pickle.load(file)
-    # gui.show_all(sols, "robot", "human", with_begin="false", with_abstract="true", causal_links="without")
+    # gui.show_all(sols, "robot", "human", with_begin="false", with_abstract="false", causal_links="without")
     # input()
 
     # SELECT THE BEST PLAN FROM THE ONES FOUND ABOVE #
@@ -523,28 +524,28 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     input()
     # r_node.send_plan(hatpehda.get_last_actions(best_plan), robot_name, human_name)
 
-    print("Start computing causal links ...")
-    start_causal = time.time()
-    supports, threats = compute_causal_links(hatpehda.agents, best_plan)
-    end_causal = time.time()
-    print("Done causal links time : {}".format(end_causal-start_causal))
-    if len(sys.argv) >= 4 :
-        with_begin_p = sys.argv[1].lower()
-        with_abstract_p = sys.argv[2].lower()
-        causal_links_p = sys.argv[3].lower()
-        constraint_causal_edges_p = sys.argv[4].lower() if len(sys.argv) >= 5 else "true"
-        gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
-            with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links=causal_links_p, constraint_causal_edges=constraint_causal_edges_p)
-    else:
-        gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
-            with_begin="false", with_abstract="false", causal_links="true", constraint_causal_edges="false")
-    print("Request done.")
+    # print("Start computing causal links ...")
+    # start_causal = time.time()
+    # supports, threats = compute_causal_links(hatpehda.agents, best_plan)
+    # end_causal = time.time()
+    # print("Done causal links time : {}".format(end_causal-start_causal))
+    # if len(sys.argv) >= 4 :
+    #     with_begin_p = sys.argv[1].lower()
+    #     with_abstract_p = sys.argv[2].lower()
+    #     causal_links_p = sys.argv[3].lower()
+    #     constraint_causal_edges_p = sys.argv[4].lower() if len(sys.argv) >= 5 else "true"
+    #     gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
+    #         with_begin=with_begin_p, with_abstract=with_abstract_p, causal_links=causal_links_p, constraint_causal_edges=constraint_causal_edges_p)
+    # else:
+    #     gui.show_all(hatpehda.get_last_actions(best_plan), "robot", "human", supports=supports, threats=threats,
+    #         with_begin="false", with_abstract="false", causal_links="true", constraint_causal_edges="false")
+    # print("Request done.")
 
 if __name__ == "__main__":
-    r_node = ros.RosNode.start_ros_node("planner", on_new_request = on_new_plan_req)
-    print("Waiting for request ...")
+    # r_node = ros.RosNode.start_ros_node("planner", on_new_request = on_new_plan_req)
+    # print("Waiting for request ...")
     on_new_plan_req(None, None)
-    r_node.wait_for_request()
+    # r_node.wait_for_request()
 
     # PROBLEM
     # hatpehda.add_tasks("robot", [("stack",)])

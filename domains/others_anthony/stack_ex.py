@@ -329,7 +329,7 @@ def h_punctuallyHelpRobot(agents, self_state, self_name, task, obj, loc):
     # print("help punctual Robot loc={}".format(loc))
 
     tasks.append( [("pickAndPlace", obj, loc)] )
-    # tasks.append( [("pickAndPlace", obj, "middle")])
+    tasks.append( [("pickAndPlace", obj, "middle")])
     return tasks
 
 ctrl_methods = [("stack", stack),

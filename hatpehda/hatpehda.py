@@ -310,14 +310,14 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
     # Else, handle first task to do in the robot agenda
     task = agents[agent_name].tasks[0]
 
-    print("HATPEHDA> task = {} {} {}".format(task.agent, task.name, task.parameters))
+    # print("HATPEHDA> task = {} {} {}".format(task.agent, task.name, task.parameters))
 
-    print("\nagenda = ", end='')
-    for taski in agents[agent_name].tasks:
-        print(" {}{},".format(taski.name, taski.parameters), end='')
-    print("")
-    print_state(agents[agent_name].state)
-    print("\ntreating task name={}".format(task.name))
+    # print("\nagenda = ", end='')
+    # for taski in agents[agent_name].tasks:
+    #     print(" {}{},".format(taski.name, taski.parameters), end='')
+    # print("")
+    # print_state(agents[agent_name].state)
+    # print("\ntreating task name={}".format(task.name))
 
     # If the first task is an operator known by the robot
     if task.name in agents[agent_name].operators:

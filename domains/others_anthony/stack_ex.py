@@ -458,6 +458,7 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
     initial_state.otherAgent = {robot_name: human_name, human_name: robot_name}
     initial_state.locStack = {robot_name: "side_r", human_name: "side_h"}
     initial_state.solution = {"b1":"red", "b2":"red", "br":"green", "t1":"blue", "t2":"yellow"}
+    initial_state.set_static_props(['locations', 'cubes', 'otherAgent', 'locStack', 'solution'])
 
     initial_state.at = {robot_name:"side_r",
                         human_name:"side_h",
@@ -468,6 +469,7 @@ def on_new_plan_req(ctrl_agents, unctrl_agent):
                         "yellow1":"middle"}
     initial_state.holding = {robot_name:[], human_name:[]}
     initial_state.numberAsk = {"help" : 0}
+    initial_state.set_dynamic_props(['at', 'holding', 'numberAsk'])
 
     # Robot
     hatpehda.declare_operators(robot_name, *ctrl_operators)

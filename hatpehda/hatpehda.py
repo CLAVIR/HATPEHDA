@@ -79,6 +79,14 @@ class State():
 
     def __init__(self, name):
         self.__name__ = name
+        self.__static_props__ = []
+        self.__dynamic_props__ = []
+
+    def set_static_props(self, static_props):
+        self.__static_props__ = static_props
+    
+    def set_dynamic_props(self, dynamic_props):
+        self.__dynamic_props__ = dynamic_props
 
 class Goal():
     """A goal is just a collection of variable bindings."""
@@ -92,7 +100,7 @@ def print_state(state, indent=4):
     """Print each variable in state, indented by indent spaces."""
     if state != False:
         for (name, val) in vars(state).items():
-            if name != '__name__':
+            if state.__dynamic_props__==[] and name!='__name__' and name!='__static_props__' and name!='__dynamic_props__' or name in state.__dynamic_props__:
                 for x in range(indent): sys.stdout.write(' ')
                 sys.stdout.write(state.__name__ + '.' + name)
                 print(' =', val)
@@ -302,13 +310,14 @@ def _seek_plan_robot(agents: Dict[str, Agent], agent_name, sols, uncontrollable_
     # Else, handle first task to do in the robot agenda
     task = agents[agent_name].tasks[0]
 
-    # print("HATPEHDA> task = {} {} {}".format(task.agent, task.name, task.parameters))
+    print("HATPEHDA> task = {} {} {}".format(task.agent, task.name, task.parameters))
 
-    # print("\nagenda = ", end='')
-    # for taski in agents[agent_name].tasks:
-    #     print(" {}{},".format(taski.name, taski.parameters), end='')
-    # print("")
-    # print("\ntreating task name={}".format(task.name))
+    print("\nagenda = ", end='')
+    for taski in agents[agent_name].tasks:
+        print(" {}{},".format(taski.name, taski.parameters), end='')
+    print("")
+    print_state(agents[agent_name].state)
+    print("\ntreating task name={}".format(task.name))
 
     # If the first task is an operator known by the robot
     if task.name in agents[agent_name].operators:
